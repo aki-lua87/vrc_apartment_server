@@ -36,6 +36,8 @@ export const rooms = sqliteTable('rooms', {
     ...schemaBase,
     // 部屋番号（0001〜9999）
     roomNumber: text('room_number', { length: 4 }).notNull().unique(),
+    // 部屋名（ダッシュボードから設定可能）
+    roomName: text('room_name', { length: 256 }),
     // 部屋エイリアスID - ゲームからのAPIアクセスに使用される複雑な文字列
     roomAliasId: text('room_alias_id', { length: 256 }).notNull().unique(),
     // ログインID - ダッシュボードへのログインに使用される文字列

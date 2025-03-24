@@ -42,12 +42,14 @@ app.get('/api/rooms', async (c) => {
     const rooms = await db.select({
       id: schema.rooms.id,
       roomNumber: schema.rooms.roomNumber,
+      roomName: schema.rooms.roomName,
       isOccupied: schema.rooms.isOccupied,
     }).from(schema.rooms).all();
 
     return c.json({
       rooms: rooms.map(room => ({
         roomNumber: room.roomNumber,
+        roomName: room.roomName || null,
         isOccupied: room.isOccupied === 1,
       })),
     });
@@ -110,7 +112,7 @@ app.get('/api/rooms/:roomAliasId/claim', async (c) => {
 });
 
 // 部屋の内装情報取得API
-// 部屋エイリアスIDを指定し、部屋番号、内装情報、プレイリストURLを返却
+// 部屋エイリアスIDを指定し、部屋番号、部屋名、内装情報、プレイリストURLを返却
 app.get('/api/rooms/:roomAliasId', async (c) => {
   const roomAliasId = c.req.param('roomAliasId');
   const db = c.get('db');
@@ -132,6 +134,7 @@ app.get('/api/rooms/:roomAliasId', async (c) => {
     // レスポンスの作成
     const response = {
       roomNumber: room.roomNumber,
+      roomName: room.roomName || null,
       isOccupied: room.isOccupied === 1,
       interiors: roomInteriors.map((interior: typeof schema.interiors.$inferSelect) => ({
         type: interior.type,
@@ -141,6 +144,42 @@ app.get('/api/rooms/:roomAliasId', async (c) => {
     };
 
     return c.json(response);
+  } catch (error) {
+    console.error('APIエラー:', error);
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500);
+  }
+});
+
+// 部屋名更新API
+// ログインIDを指定し、部屋名を更新
+app.post('/api/rooms/name', async (c) => {
+  const db = c.get('db');
+
+  try {
+    const body = await c.req.json();
+    const { loginId, roomName } = body;
+
+    if (!loginId || roomName === undefined) {
+      return c.json({ error: 'リクエストの形式が正しくありません' }, 400);
+    }
+
+    // ログインIDから部屋を検索
+    const room = await db.select().from(schema.rooms).where(eq(schema.rooms.loginId, loginId)).get();
+
+    if (!room) {
+      return c.json({ error: '部屋が見つかりません' }, 404);
+    }
+
+    // 部屋名の更新
+    await db.update(schema.rooms)
+      .set({ roomName })
+      .where(eq(schema.rooms.id, room.id))
+      .run();
+
+    return c.json({
+      success: true,
+      roomName,
+    });
   } catch (error) {
     console.error('APIエラー:', error);
     return c.json({ error: 'サーバーエラーが発生しました' }, 500);
