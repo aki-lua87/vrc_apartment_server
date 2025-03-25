@@ -159,6 +159,73 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /rooms/by-login/{loginId}:
+    get:
+      summary: ログインIDによる部屋の内装情報取得
+      description: ログインIDを指定し、部屋番号、部屋名、内装情報、プレイリストURLを返却します
+      operationId: getRoomByLoginId
+      parameters:
+        - name: loginId
+          in: path
+          required: true
+          description: ログインID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 部屋情報の取得に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roomNumber:
+                    type: string
+                    description: 部屋番号
+                  roomName:
+                    type: string
+                    nullable: true
+                    description: 部屋名（設定されていない場合はnull）
+                  isOccupied:
+                    type: boolean
+                    description: 使用中フラグ
+                  interiors:
+                    type: array
+                    description: 内装情報
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          description: 内装タイプコード
+                        typeName:
+                          type: string
+                          description: 内装タイプ名
+                        pattern:
+                          type: integer
+                          description: 内装パターンID
+                        patternName:
+                          type: string
+                          description: 内装パターン名
+                  playlists:
+                    type: array
+                    description: プレイリスト情報
+                    items:
+                      type: string
+                      description: プレイリストURL
+        "404":
+          description: 部屋が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /rooms/name:
     post:
       summary: 部屋名更新

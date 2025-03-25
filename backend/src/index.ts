@@ -132,7 +132,7 @@ app.get('/api/rooms/:roomAliasId/claim', async (c) => {
   }
 });
 
-// 部屋の内装情報取得API
+// 部屋の内装情報取得API（部屋エイリアスIDを指定）
 // 部屋エイリアスIDを指定し、部屋番号、部屋名、内装情報、プレイリストURLを返却
 app.get('/api/rooms/:roomAliasId', async (c) => {
   const roomAliasId = c.req.param('roomAliasId');
@@ -141,6 +141,59 @@ app.get('/api/rooms/:roomAliasId', async (c) => {
   try {
     // 部屋の検索
     const room = await db.select().from(schema.rooms).where(eq(schema.rooms.roomAliasId, roomAliasId)).get();
+
+    if (!room) {
+      return c.json({ error: '部屋が見つかりません' }, 404);
+    }
+
+    // 部屋の内装情報を取得（内装タイプと内装パターンの情報も含む）
+    const roomInteriors = await db.select({
+      interiorId: schema.interiors.id,
+      typeId: schema.interiors.typeId,
+      patternId: schema.interiors.patternId,
+      typeCode: schema.interiorTypes.code,
+      typeName: schema.interiorTypes.name,
+      patternName: schema.interiorPatterns.name,
+    })
+    .from(schema.interiors)
+    .leftJoin(schema.interiorTypes, eq(schema.interiors.typeId, schema.interiorTypes.id))
+    .leftJoin(schema.interiorPatterns, eq(schema.interiors.patternId, schema.interiorPatterns.id))
+    .where(eq(schema.interiors.roomId, room.id))
+    .all();
+
+    // 部屋のプレイリスト情報を取得
+    const roomPlaylists = await db.select().from(schema.playlists).where(eq(schema.playlists.roomId, room.id)).all();
+
+    // レスポンスの作成
+    const response = {
+      roomNumber: room.roomNumber,
+      roomName: room.roomName || null,
+      isOccupied: room.isOccupied === 1,
+      interiors: roomInteriors.map((interior) => ({
+        type: interior.typeCode,
+        typeName: interior.typeName,
+        pattern: interior.patternId,
+        patternName: interior.patternName,
+      })),
+      playlists: roomPlaylists.map((playlist: typeof schema.playlists.$inferSelect) => playlist.url),
+    };
+
+    return c.json(response);
+  } catch (error) {
+    console.error('APIエラー:', error);
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500);
+  }
+});
+
+// 部屋の内装情報取得API（ログインIDを指定）
+// ログインIDを指定し、部屋番号、部屋名、内装情報、プレイリストURLを返却
+app.get('/api/rooms/by-login/:loginId', async (c) => {
+  const loginId = c.req.param('loginId');
+  const db = c.get('db');
+
+  try {
+    // 部屋の検索
+    const room = await db.select().from(schema.rooms).where(eq(schema.rooms.loginId, loginId)).get();
 
     if (!room) {
       return c.json({ error: '部屋が見つかりません' }, 404);

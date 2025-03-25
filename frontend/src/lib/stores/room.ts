@@ -44,12 +44,35 @@ function createRoomStore() {
   return {
     subscribe,
     
-    // 部屋の詳細を取得
+    // 部屋の詳細を取得（部屋エイリアスIDを指定）
     async fetchRoom(roomAliasId: string) {
       update(state => ({ ...state, isLoading: true, error: null }));
       
       try {
         const room = await roomAPI.getRoom(roomAliasId);
+        update(state => ({
+          ...state,
+          currentRoom: room,
+          isLoading: false,
+        }));
+        return room;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+        update(state => ({
+          ...state,
+          isLoading: false,
+          error: errorMessage,
+        }));
+        throw error;
+      }
+    },
+    
+    // 部屋の詳細を取得（ログインIDを指定）
+    async fetchRoomByLoginId(loginId: string) {
+      update(state => ({ ...state, isLoading: true, error: null }));
+      
+      try {
+        const room = await roomAPI.getRoomByLoginId(loginId);
         update(state => ({
           ...state,
           currentRoom: room,

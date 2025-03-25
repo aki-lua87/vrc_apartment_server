@@ -117,9 +117,16 @@ export const roomAPI = {
     });
   },
   
-  // 部屋の詳細を取得
+  // 部屋の詳細を取得（部屋エイリアスIDを指定）
   getRoom: (roomAliasId: string) => {
     return fetchAPI<Room>(`/rooms/${roomAliasId}`, {
+      method: 'GET',
+    });
+  },
+  
+  // 部屋の詳細を取得（ログインIDを指定）
+  getRoomByLoginId: (loginId: string) => {
+    return fetchAPI<Room>(`/rooms/by-login/${loginId}`, {
       method: 'GET',
     });
   },

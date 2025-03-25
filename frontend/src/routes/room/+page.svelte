@@ -11,7 +11,7 @@
   // 認証チェック
   onMount(() => {
     try {
-      const { isAuthenticated } = $authStore;
+      const { isAuthenticated, roomNumber } = $authStore;
       if (!isAuthenticated) {
         // 未認証の場合はログイン画面へリダイレクト
         goto('/');
@@ -19,10 +19,13 @@
       }
       
       // 部屋情報を取得
-      // 注: 実際のアプリでは、ユーザーIDに基づいて部屋IDを取得する処理が必要
-      // ここでは簡略化のため、固定の部屋IDを使用
-      const roomAliasId = 'room1';
-      roomStore.fetchRoom(roomAliasId);
+      // ログインIDを使用して部屋情報を取得
+      const loginId = getLoginIdFromAuthStore();
+      if (loginId) {
+        roomStore.fetchRoomByLoginId(loginId);
+      } else {
+        console.error('ログインIDが取得できません');
+      }
       
       // 内装タイプと内装パターンの一覧を取得
       interiorStore.fetchInteriorTypes();
@@ -32,6 +35,16 @@
       console.error('初期化エラー:', error);
     }
   });
+  
+  // authStoreからログインIDを取得する関数
+  function getLoginIdFromAuthStore() {
+    // 実際のアプリでは、authStoreにログインIDが保存されている想定
+    // このサンプルでは簡略化のため、固定値を返す
+    return 'login1';
+    
+    // 実際の実装では以下のようになる
+    // return $authStore.loginId;
+  }
   
   // ログアウト処理
   function handleLogout() {
@@ -63,8 +76,13 @@
     }
     
     try {
-      // ログインIDが必要 - 実際のアプリでは認証情報から取得
-      const loginId = 'login1'; // 仮のログインID
+      // ログインIDを取得
+      const loginId = getLoginIdFromAuthStore();
+      if (!loginId) {
+        roomNameError = 'ログインIDが取得できません';
+        return;
+      }
+      
       await roomStore.updateRoomName(loginId, newRoomName);
       isRoomNameModalOpen = false;
     } catch (error) {
@@ -92,8 +110,12 @@
     if (!selectedInteriorType) return;
     
     try {
-      // ログインIDが必要 - 実際のアプリでは認証情報から取得
-      const loginId = 'login1'; // 仮のログインID
+      // ログインIDを取得
+      const loginId = getLoginIdFromAuthStore();
+      if (!loginId) {
+        console.error('ログインIDが取得できません');
+        return;
+      }
       
       // 内装を更新
       await roomStore.updateInteriors(loginId, [
@@ -122,8 +144,13 @@
       const updatedPlaylists = [...$roomStore.currentRoom.playlists];
       updatedPlaylists.splice(index, 1);
       
-      // ログインIDが必要 - 実際のアプリでは認証情報から取得
-      const loginId = 'login1'; // 仮のログインID
+      // ログインIDを取得
+      const loginId = getLoginIdFromAuthStore();
+      if (!loginId) {
+        console.error('ログインIDが取得できません');
+        return;
+      }
+      
       roomStore.updatePlaylists(loginId, updatedPlaylists);
     }
   }
@@ -155,8 +182,13 @@
       ];
       
       try {
-        // ログインIDが必要 - 実際のアプリでは認証情報から取得
-        const loginId = 'login1'; // 仮のログインID
+        // ログインIDを取得
+        const loginId = getLoginIdFromAuthStore();
+        if (!loginId) {
+          playlistError = 'ログインIDが取得できません';
+          return;
+        }
+        
         await roomStore.updatePlaylists(loginId, updatedPlaylists);
         newPlaylistUrl = '';
         playlistError = '';
