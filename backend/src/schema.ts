@@ -14,22 +14,6 @@ const schemaBase = {
     ...timestamps,
 };
 
-// // ユーザーテーブル
-// export const users = sqliteTable('users', {
-//     ...schemaBase,
-//     // ユーザー名（オプション）
-//     username: text('username', { length: 256 }),
-// }, (table) => ({
-//     usernameIdx: uniqueIndex('username_idx').on(table.username),
-// }));
-
-// ユーザーリレーション
-// export const usersRelations = relations(users, ({ one }) => ({
-//     room: one(rooms, {
-//         fields: [users.id],
-//         references: [rooms.userId],
-//     }),
-// }));
 
 // 部屋テーブル
 export const rooms = sqliteTable('rooms', {
@@ -42,23 +26,16 @@ export const rooms = sqliteTable('rooms', {
     roomAliasId: text('room_alias_id', { length: 256 }).notNull().unique(),
     // ログインID - ダッシュボードへのログインに使用される文字列
     loginId: text('login_id', { length: 256 }).notNull().unique(),
-    // 所有者ユーザーID（初期値はnull - 未所有状態）
-    // userId: integer('user_id').references(() => users.id),
     // 使用中フラグ
     isOccupied: integer('is_occupied').notNull().default(0),
 }, (table) => ({
     roomNumberIdx: uniqueIndex('room_number_idx').on(table.roomNumber),
     roomAliasIdIdx: uniqueIndex('room_alias_id_idx').on(table.roomAliasId),
     loginIdIdx: uniqueIndex('login_id_idx').on(table.loginId),
-    // userIdIdx: uniqueIndex('user_id_idx').on(table.userId),
 }));
 
 // 部屋リレーション
 export const roomsRelations = relations(rooms, ({ one, many }) => ({
-    // user: one(users, {
-    //     fields: [rooms.userId],
-    //     references: [users.id],
-    // }),
     interiors: many(interiors),
     playlists: many(playlists),
 }));
