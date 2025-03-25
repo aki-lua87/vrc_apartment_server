@@ -85,6 +85,12 @@
           {/if}
         </Button>
       </div>
+      
+      <div class="text-center mt-4">
+        <a href="/admin" class="text-sm text-indigo-600 hover:text-indigo-800">
+          管理者ログイン
+        </a>
+      </div>
     </form>
   </div>
 </div>

@@ -89,6 +89,17 @@ export const authAPI = {
       body: { loginId },
     });
   },
+  
+  // 管理者ログイン
+  adminLogin: (loginId: string) => {
+    return fetchAPI<{
+      success: boolean;
+      message: string;
+    }>('/auth/admin-login', {
+      method: 'POST',
+      body: { loginId },
+    });
+  },
 };
 
 // 部屋関連のAPI

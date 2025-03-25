@@ -568,6 +568,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+                
+  /auth/admin-login:
+    post:
+      summary: 管理者ログイン認証
+      description: 部屋番号が0000に一致するログインIDを送信された場合のみTRUEを返します
+      operationId: adminLogin
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - loginId
+              properties:
+                loginId:
+                  type: string
+                  description: ログインID
+      responses:
+        "200":
+          description: 管理者ログイン認証の結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ（部屋番号が0000の場合はtrue）
+                  message:
+                    type: string
+                    description: 結果に関するメッセージ
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /admin/interior-types:
     post:

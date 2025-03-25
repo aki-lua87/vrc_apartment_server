@@ -452,6 +452,46 @@ app.post('/api/auth/login', async (c) => {
   }
 });
 
+// 管理者ログインAPI
+// 部屋番号が0000に一致するログインIDを送信された場合のみTRUEを返す
+app.post('/api/auth/admin-login', async (c) => {
+  const db = c.get('db');
+
+  try {
+    const body = await c.req.json();
+    const { loginId } = body;
+
+    if (!loginId) {
+      return c.json({ error: 'ログインIDが指定されていません' }, 400);
+    }
+
+    // ログインIDから部屋を検索
+    const room = await db.select({
+      id: schema.rooms.id,
+      roomNumber: schema.rooms.roomNumber,
+    }).from(schema.rooms).where(eq(schema.rooms.loginId, loginId)).get();
+
+    // 部屋が存在しない場合はFALSEを返す
+    if (!room) {
+      return c.json({
+        success: false,
+        message: 'ログインIDが存在しません',
+      });
+    }
+
+    // 部屋番号が0000かどうかをチェック
+    const isAdmin = room.roomNumber === '0000';
+
+    return c.json({
+      success: isAdmin,
+      message: isAdmin ? '管理者ログイン成功' : '管理者権限がありません',
+    });
+  } catch (error) {
+    console.error('APIエラー:', error);
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500);
+  }
+});
+
 // 内装タイプとパターンの組み合わせ一覧取得API
 app.get('/api/interior-combinations', async (c) => {
   const db = c.get('db');
