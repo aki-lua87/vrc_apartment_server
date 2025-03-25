@@ -88,7 +88,7 @@ app.get('/api/rooms/:roomAliasId/claim', async (c) => {
 
     // 基本的な内装を追加
     const interiorTypeCodes = ['sofa', 'table', 'bed', 'chair', 'lamp', 'carpet'];
-    
+
     // 内装タイプIDを取得
     for (const code of interiorTypeCodes) {
       // タイプIDを取得
@@ -96,26 +96,25 @@ app.get('/api/rooms/:roomAliasId/claim', async (c) => {
         .from(schema.interiorTypes)
         .where(eq(schema.interiorTypes.code, code))
         .get();
-      
+
       if (!typeRecord) {
         console.error(`内装タイプが見つかりません: ${code}`);
         continue;
       }
-      
+
       // デフォルトパターンを取得（ID=1と仮定）
       const patternRecord = await db.select()
         .from(schema.interiorPatterns)
         .where(eq(schema.interiorPatterns.id, 1))
         .get();
-      
+
       if (!patternRecord) {
         console.error('デフォルトの内装パターンが見つかりません');
         continue;
       }
-      
+
       // 内装を追加
       await db.insert(schema.interiors).values({
-        typeId: typeRecord.id,
         patternId: patternRecord.id,
         roomId: room.id,
       }).run();
@@ -149,17 +148,17 @@ app.get('/api/rooms/:roomAliasId', async (c) => {
     // 部屋の内装情報を取得（内装タイプと内装パターンの情報も含む）
     const roomInteriors = await db.select({
       interiorId: schema.interiors.id,
-      typeId: schema.interiors.typeId,
+      typeId: schema.interiorPatterns.typeId,
       patternId: schema.interiors.patternId,
       typeCode: schema.interiorTypes.code,
       typeName: schema.interiorTypes.name,
       patternName: schema.interiorPatterns.name,
     })
-    .from(schema.interiors)
-    .leftJoin(schema.interiorTypes, eq(schema.interiors.typeId, schema.interiorTypes.id))
-    .leftJoin(schema.interiorPatterns, eq(schema.interiors.patternId, schema.interiorPatterns.id))
-    .where(eq(schema.interiors.roomId, room.id))
-    .all();
+      .from(schema.interiors)
+      .leftJoin(schema.interiorPatterns, eq(schema.interiors.patternId, schema.interiorPatterns.id))
+      .leftJoin(schema.interiorTypes, eq(schema.interiorPatterns.typeId, schema.interiorTypes.id))
+      .where(eq(schema.interiors.roomId, room.id))
+      .all();
 
     // 部屋のプレイリスト情報を取得
     const roomPlaylists = await db.select().from(schema.playlists).where(eq(schema.playlists.roomId, room.id)).all();
@@ -202,17 +201,17 @@ app.get('/api/rooms/by-login/:loginId', async (c) => {
     // 部屋の内装情報を取得（内装タイプと内装パターンの情報も含む）
     const roomInteriors = await db.select({
       interiorId: schema.interiors.id,
-      typeId: schema.interiors.typeId,
+      typeId: schema.interiorPatterns.typeId,
       patternId: schema.interiors.patternId,
       typeCode: schema.interiorTypes.code,
       typeName: schema.interiorTypes.name,
       patternName: schema.interiorPatterns.name,
     })
-    .from(schema.interiors)
-    .leftJoin(schema.interiorTypes, eq(schema.interiors.typeId, schema.interiorTypes.id))
-    .leftJoin(schema.interiorPatterns, eq(schema.interiors.patternId, schema.interiorPatterns.id))
-    .where(eq(schema.interiors.roomId, room.id))
-    .all();
+      .from(schema.interiors)
+      .leftJoin(schema.interiorPatterns, eq(schema.interiors.patternId, schema.interiorPatterns.id))
+      .leftJoin(schema.interiorTypes, eq(schema.interiorPatterns.typeId, schema.interiorTypes.id))
+      .where(eq(schema.interiors.roomId, room.id))
+      .all();
 
     // 部屋のプレイリスト情報を取得
     const roomPlaylists = await db.select().from(schema.playlists).where(eq(schema.playlists.roomId, room.id)).all();
@@ -305,18 +304,18 @@ app.post('/api/rooms/interiors', async (c) => {
         .from(schema.interiorTypes)
         .where(eq(schema.interiorTypes.code, interior.type))
         .get();
-      
+
       if (!typeRecord) {
         console.error(`内装タイプが見つかりません: ${interior.type}`);
         continue;
       }
-      
+
       // パターンIDを取得
       const patternRecord = await db.select()
         .from(schema.interiorPatterns)
         .where(eq(schema.interiorPatterns.id, interior.pattern))
         .get();
-      
+
       if (!patternRecord) {
         console.error(`内装パターンが見つかりません: ${interior.pattern}`);
         continue;
@@ -328,7 +327,7 @@ app.post('/api/rooms/interiors', async (c) => {
         .where(
           and(
             eq(schema.interiors.roomId, room.id),
-            eq(schema.interiors.typeId, typeRecord.id)
+            eq(schema.interiors.patternId, typeRecord.id)
           )
         )
         .get();
@@ -343,7 +342,6 @@ app.post('/api/rooms/interiors', async (c) => {
         // 新しい内装を追加
         await db.insert(schema.interiors)
           .values({
-            typeId: typeRecord.id,
             patternId: patternRecord.id,
             roomId: room.id,
           })
@@ -392,14 +390,12 @@ app.get('/api/interior-patterns', async (c) => {
     const patterns = await db.select({
       id: schema.interiorPatterns.id,
       name: schema.interiorPatterns.name,
-      description: schema.interiorPatterns.description,
     }).from(schema.interiorPatterns).all();
 
     return c.json({
       patterns: patterns.map(pattern => ({
         id: pattern.id,
         name: pattern.name,
-        description: pattern.description || null,
       })),
     });
   } catch (error) {
@@ -508,7 +504,6 @@ app.get('/api/interior-combinations', async (c) => {
     const patterns = await db.select({
       id: schema.interiorPatterns.id,
       name: schema.interiorPatterns.name,
-      description: schema.interiorPatterns.description,
     }).from(schema.interiorPatterns).all();
 
     // 組み合わせを作成
@@ -522,7 +517,6 @@ app.get('/api/interior-combinations', async (c) => {
         patterns: patterns.map(pattern => ({
           id: pattern.id,
           name: pattern.name,
-          description: pattern.description || null,
         })),
       };
     });
@@ -665,17 +659,7 @@ app.delete('/api/admin/interior-types/:id', async (c) => {
     }
 
     // この内装タイプを使用している内装があるか確認
-    const usedInteriors = await db.select()
-      .from(schema.interiors)
-      .where(eq(schema.interiors.typeId, id))
-      .all();
-
-    if (usedInteriors.length > 0) {
-      return c.json({ 
-        error: 'この内装タイプは使用中のため削除できません',
-        usedCount: usedInteriors.length
-      }, 400);
-    }
+    // -> 削除していい
 
     // 内装タイプを削除
     await db.delete(schema.interiorTypes)
@@ -698,7 +682,7 @@ app.post('/api/admin/interior-patterns', async (c) => {
 
   try {
     const body = await c.req.json();
-    const { name, description } = body;
+    const { typeId, name } = body;
 
     if (!name) {
       return c.json({ error: '名前は必須です' }, 400);
@@ -707,8 +691,7 @@ app.post('/api/admin/interior-patterns', async (c) => {
     // 内装パターンを追加
     const result = await db.insert(schema.interiorPatterns)
       .values({
-        name,
-        description: description || null,
+        typeId, name,
       })
       .returning()
       .get();
@@ -718,7 +701,6 @@ app.post('/api/admin/interior-patterns', async (c) => {
       pattern: {
         id: result.id,
         name: result.name,
-        description: result.description,
       },
     });
   } catch (error) {
@@ -771,7 +753,6 @@ app.put('/api/admin/interior-patterns/:id', async (c) => {
       pattern: {
         id: result.id,
         name: result.name,
-        description: result.description,
       },
     });
   } catch (error) {
@@ -807,7 +788,7 @@ app.delete('/api/admin/interior-patterns/:id', async (c) => {
       .all();
 
     if (usedInteriors.length > 0) {
-      return c.json({ 
+      return c.json({
         error: 'この内装パターンは使用中のため削除できません',
         usedCount: usedInteriors.length
       }, 400);

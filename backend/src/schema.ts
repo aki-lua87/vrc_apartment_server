@@ -28,11 +28,11 @@ export const rooms = sqliteTable('rooms', {
     loginId: text('login_id', { length: 256 }).notNull().unique(),
     // 使用中フラグ
     isOccupied: integer('is_occupied').notNull().default(0),
-}, (table) => ({
-    roomNumberIdx: uniqueIndex('room_number_idx').on(table.roomNumber),
-    roomAliasIdIdx: uniqueIndex('room_alias_id_idx').on(table.roomAliasId),
-    loginIdIdx: uniqueIndex('login_id_idx').on(table.loginId),
-}));
+}, (table) => [
+    uniqueIndex('room_number_idx').on(table.roomNumber),
+    uniqueIndex('room_alias_id_idx').on(table.roomAliasId),
+    uniqueIndex('login_id_idx').on(table.loginId),
+]);
 
 // 部屋リレーション
 export const roomsRelations = relations(rooms, ({ one, many }) => ({
@@ -47,28 +47,26 @@ export const interiorTypes = sqliteTable('interior_types', {
     code: text('code').notNull().unique(),
     // タイプ名（日本語表示用）
     name: text('name').notNull(),
-}, (table) => ({
-    codeIdx: uniqueIndex('interior_type_code_idx').on(table.code),
-}));
+}, (table) => [
+    uniqueIndex('interior_type_code_idx').on(table.code),
+]);
 
 // 内装パターンテーブル
 export const interiorPatterns = sqliteTable('interior_patterns', {
     ...schemaBase,
+    // 内装タイプID
+    typeId: integer('type_id').notNull().references(() => interiorTypes.id),
     // パターン名（日本語表示用）
     name: text('name').notNull(),
-    // パターン説明
-    description: text('description'),
 });
 
 // 内装テーブル
 export const interiors = sqliteTable('interiors', {
     ...schemaBase,
-    // 内装タイプID
-    typeId: integer('type_id').notNull().references(() => interiorTypes.id),
-    // 内装パターンID
-    patternId: integer('pattern_id').notNull().references(() => interiorPatterns.id),
     // 部屋ID
     roomId: integer('room_id').notNull().references(() => rooms.id),
+    // 内装パターンID
+    patternId: integer('pattern_id').notNull().references(() => interiorPatterns.id),
 });
 
 // 内装リレーション
@@ -76,10 +74,6 @@ export const interiorsRelations = relations(interiors, ({ one }) => ({
     room: one(rooms, {
         fields: [interiors.roomId],
         references: [rooms.id],
-    }),
-    type: one(interiorTypes, {
-        fields: [interiors.typeId],
-        references: [interiorTypes.id],
     }),
     pattern: one(interiorPatterns, {
         fields: [interiors.patternId],
