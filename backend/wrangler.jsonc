@@ -2,10 +2,14 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "backend",
   "main": "src/index.ts",
-  "compatibility_date": "2025-03-24"
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
+  "compatibility_date": "2024-03-24",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vrc-apartment-database",
+      "database_id": "2d964f1c-f3cd-4326-940b-e35dc6f31156"
+    }
+  ],
   // "vars": {
   //   "MY_VAR": "my-variable"
   // },
@@ -19,13 +23,6 @@
   //   {
   //     "binding": "MY_BUCKET",
   //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
   //   }
   // ],
   // "ai": {
