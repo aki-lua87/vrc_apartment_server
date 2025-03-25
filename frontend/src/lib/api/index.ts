@@ -31,8 +31,8 @@ async function fetchAPI<T>(endpoint: string, options: RequestOptions): Promise<T
   
   // レスポンスが成功しなかった場合はエラーをスロー
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({})) as { message?: string };
-    throw new Error(errorData.message || `API request failed with status ${response.status}`);
+    const errorData = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(errorData.error || `API request failed with status ${response.status}`);
   }
   
   // 204 No Content の場合は null を返す
@@ -44,27 +44,49 @@ async function fetchAPI<T>(endpoint: string, options: RequestOptions): Promise<T
   return await response.json();
 }
 
+// 内装タイプの型定義
+export type InteriorType = {
+  id: number;
+  code: string;
+  name: string;
+};
+
+// 内装パターンの型定義
+export type InteriorPattern = {
+  id: number;
+  name: string;
+  description: string | null;
+};
+
+// 内装の型定義
+export type Interior = {
+  type: string;
+  typeName: string;
+  pattern: number;
+  patternName: string;
+};
+
+// 部屋の型定義
+export type Room = {
+  roomNumber: string;
+  roomName: string | null;
+  isOccupied: boolean;
+  interiors: Interior[];
+  playlists: string[];
+};
+
 // ログイン関連のAPI
 export const authAPI = {
   // ログイン
   login: (loginId: string) => {
-    return fetchAPI<{ success: boolean; userId: string }>('/auth/login', {
+    return fetchAPI<{
+      success: boolean;
+      roomNumber: string;
+      roomName: string | null;
+      message: string;
+    }>('/auth/login', {
       method: 'POST',
       body: { loginId },
-    });
-  },
-  
-  // ログアウト
-  logout: () => {
-    return fetchAPI<void>('/auth/logout', {
-      method: 'POST',
-    });
-  },
-  
-  // 現在のユーザー情報を取得
-  getCurrentUser: () => {
-    return fetchAPI<{ userId: string }>('/auth/me', {
-      method: 'GET',
     });
   },
 };
@@ -73,66 +95,155 @@ export const authAPI = {
 export const roomAPI = {
   // 部屋の一覧を取得
   getRooms: () => {
-    return fetchAPI<Array<{
-      id: string;
-      name: string;
-      furniture: Record<string, string>;
-      playlist: Array<{ title: string; url: string }>;
-    }>>('/rooms', {
+    return fetchAPI<{
+      rooms: Array<{
+        roomNumber: string;
+        roomName: string | null;
+        isOccupied: boolean;
+      }>;
+    }>('/rooms', {
+      method: 'GET',
+    });
+  },
+  
+  // 部屋を自分のものにする
+  claimRoom: (roomAliasId: string) => {
+    return fetchAPI<{
+      success: boolean;
+      roomNumber: string;
+      loginId: string;
+    }>(`/rooms/${roomAliasId}/claim`, {
       method: 'GET',
     });
   },
   
   // 部屋の詳細を取得
-  getRoom: (roomId: string) => {
-    return fetchAPI<{
-      id: string;
-      name: string;
-      furniture: Record<string, string>;
-      playlist: Array<{ title: string; url: string }>;
-    }>(`/rooms/${roomId}`, {
+  getRoom: (roomAliasId: string) => {
+    return fetchAPI<Room>(`/rooms/${roomAliasId}`, {
       method: 'GET',
     });
   },
   
   // 部屋名を更新
-  updateRoomName: (roomId: string, name: string) => {
-    return fetchAPI<{ success: boolean }>(`/rooms/${roomId}/name`, {
-      method: 'PUT',
-      body: { name },
+  updateRoomName: (loginId: string, roomName: string) => {
+    return fetchAPI<{
+      success: boolean;
+      roomName: string;
+    }>('/rooms/name', {
+      method: 'POST',
+      body: { loginId, roomName },
     });
   },
   
-  // 家具を更新
-  updateFurniture: (roomId: string, furnitureType: string, furnitureId: string) => {
-    return fetchAPI<{ success: boolean }>(`/rooms/${roomId}/furniture`, {
-      method: 'PUT',
-      body: { type: furnitureType, id: furnitureId },
+  // 内装を更新
+  updateInteriors: (loginId: string, interiors: Array<{ type: string; pattern: number }>) => {
+    return fetchAPI<{ success: boolean }>('/rooms/interiors', {
+      method: 'POST',
+      body: { loginId, interiors },
     });
   },
   
   // プレイリストを更新
-  updatePlaylist: (roomId: string, playlist: Array<{ title: string; url: string }>) => {
-    return fetchAPI<{ success: boolean }>(`/rooms/${roomId}/playlist`, {
-      method: 'PUT',
-      body: { playlist },
+  updatePlaylists: (loginId: string, playlists: string[]) => {
+    return fetchAPI<{ success: boolean }>('/rooms/playlists', {
+      method: 'POST',
+      body: { loginId, playlists },
     });
   },
 };
 
-// 家具関連のAPI
-export const furnitureAPI = {
-  // 家具タイプの一覧を取得
-  getFurnitureTypes: () => {
-    return fetchAPI<string[]>('/furniture/types', {
+// 内装関連のAPI
+export const interiorAPI = {
+  // 内装タイプの一覧を取得
+  getInteriorTypes: () => {
+    return fetchAPI<{ types: InteriorType[] }>('/interior-types', {
       method: 'GET',
     });
   },
   
-  // 特定タイプの家具一覧を取得
-  getFurnitureByType: (type: string) => {
-    return fetchAPI<Array<{ id: string; name: string; imageUrl: string }>>(`/furniture/types/${type}`, {
+  // 内装パターンの一覧を取得
+  getInteriorPatterns: () => {
+    return fetchAPI<{ patterns: InteriorPattern[] }>('/interior-patterns', {
       method: 'GET',
+    });
+  },
+  
+  // 内装タイプとパターンの組み合わせを取得
+  getInteriorCombinations: () => {
+    return fetchAPI<{
+      combinations: Array<{
+        type: InteriorType;
+        patterns: InteriorPattern[];
+      }>;
+    }>('/interior-combinations', {
+      method: 'GET',
+    });
+  },
+};
+
+// 管理者用API
+export const adminAPI = {
+  // 内装タイプを追加
+  addInteriorType: (code: string, name: string) => {
+    return fetchAPI<{
+      success: boolean;
+      type: InteriorType;
+    }>('/admin/interior-types', {
+      method: 'POST',
+      body: { code, name },
+    });
+  },
+  
+  // 内装タイプを更新
+  updateInteriorType: (id: number, data: { code?: string; name?: string }) => {
+    return fetchAPI<{
+      success: boolean;
+      type: InteriorType;
+    }>(`/admin/interior-types/${id}`, {
+      method: 'PUT',
+      body: data,
+    });
+  },
+  
+  // 内装タイプを削除
+  deleteInteriorType: (id: number) => {
+    return fetchAPI<{
+      success: boolean;
+      message: string;
+    }>(`/admin/interior-types/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  
+  // 内装パターンを追加
+  addInteriorPattern: (name: string, description?: string) => {
+    return fetchAPI<{
+      success: boolean;
+      pattern: InteriorPattern;
+    }>('/admin/interior-patterns', {
+      method: 'POST',
+      body: { name, description },
+    });
+  },
+  
+  // 内装パターンを更新
+  updateInteriorPattern: (id: number, data: { name?: string; description?: string | null }) => {
+    return fetchAPI<{
+      success: boolean;
+      pattern: InteriorPattern;
+    }>(`/admin/interior-patterns/${id}`, {
+      method: 'PUT',
+      body: data,
+    });
+  },
+  
+  // 内装パターンを削除
+  deleteInteriorPattern: (id: number) => {
+    return fetchAPI<{
+      success: boolean;
+      message: string;
+    }>(`/admin/interior-patterns/${id}`, {
+      method: 'DELETE',
     });
   },
 };

@@ -40,16 +40,33 @@ export const roomsRelations = relations(rooms, ({ one, many }) => ({
     playlists: many(playlists),
 }));
 
-// 内装タイプの列挙型（文字列として保存）
-export type InteriorType = 'sofa' | 'table' | 'bed' | 'chair' | 'lamp' | 'carpet';
+// 内装タイプテーブル
+export const interiorTypes = sqliteTable('interior_types', {
+    ...schemaBase,
+    // タイプコード（sofa, table, bed, chair, lamp, carpet など）
+    code: text('code').notNull().unique(),
+    // タイプ名（日本語表示用）
+    name: text('name').notNull(),
+}, (table) => ({
+    codeIdx: uniqueIndex('interior_type_code_idx').on(table.code),
+}));
+
+// 内装パターンテーブル
+export const interiorPatterns = sqliteTable('interior_patterns', {
+    ...schemaBase,
+    // パターン名（日本語表示用）
+    name: text('name').notNull(),
+    // パターン説明
+    description: text('description'),
+});
 
 // 内装テーブル
 export const interiors = sqliteTable('interiors', {
     ...schemaBase,
-    // 内装タイプ（ソファ、テーブル、ベッドなど）
-    type: text('type').notNull(),
-    // 内装パターン（1: 表示しない、2: 縞模様、3: チェック模様など）
-    pattern: integer('pattern').notNull(),
+    // 内装タイプID
+    typeId: integer('type_id').notNull().references(() => interiorTypes.id),
+    // 内装パターンID
+    patternId: integer('pattern_id').notNull().references(() => interiorPatterns.id),
     // 部屋ID
     roomId: integer('room_id').notNull().references(() => rooms.id),
 });
@@ -60,6 +77,24 @@ export const interiorsRelations = relations(interiors, ({ one }) => ({
         fields: [interiors.roomId],
         references: [rooms.id],
     }),
+    type: one(interiorTypes, {
+        fields: [interiors.typeId],
+        references: [interiorTypes.id],
+    }),
+    pattern: one(interiorPatterns, {
+        fields: [interiors.patternId],
+        references: [interiorPatterns.id],
+    }),
+}));
+
+// 内装タイプリレーション
+export const interiorTypesRelations = relations(interiorTypes, ({ many }) => ({
+    interiors: many(interiors),
+}));
+
+// 内装パターンリレーション
+export const interiorPatternsRelations = relations(interiorPatterns, ({ many }) => ({
+    interiors: many(interiors),
 }));
 
 // プレイリストテーブル

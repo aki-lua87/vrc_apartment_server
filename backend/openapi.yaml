@@ -1,0 +1,885 @@
+openapi: 3.0.0
+info:
+  title: VRC Apartment Server API
+  description: VRChatのアパートメントサーバーのAPI仕様
+  version: 1.0.0
+  contact:
+    name: aki_lua87
+servers:
+  - url: /api
+    description: APIのベースURL
+paths:
+  /rooms:
+    get:
+      summary: 部屋一覧取得
+      description: 全ての部屋の部屋番号と使用状況を返却します
+      operationId: getRooms
+      responses:
+        "200":
+          description: 部屋一覧の取得に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rooms:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        roomNumber:
+                          type: string
+                          description: 部屋番号
+                        roomName:
+                          type: string
+                          nullable: true
+                          description: 部屋名（設定されていない場合はnull）
+                        isOccupied:
+                          type: boolean
+                          description: 使用中フラグ
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{roomAliasId}/claim:
+    get:
+      summary: 部屋を自分のものにする
+      description: 部屋エイリアスIDを指定し、その部屋を使用中にします
+      operationId: claimRoom
+      parameters:
+        - name: roomAliasId
+          in: path
+          required: true
+          description: 部屋エイリアスID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 部屋の確保に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  roomNumber:
+                    type: string
+                    description: 部屋番号
+                  loginId:
+                    type: string
+                    description: ログインID
+        "400":
+          description: リクエストエラー（部屋が既に使用中など）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 部屋が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{roomAliasId}:
+    get:
+      summary: 部屋の内装情報取得
+      description: 部屋エイリアスIDを指定し、部屋番号、部屋名、内装情報、プレイリストURLを返却します
+      operationId: getRoomDetails
+      parameters:
+        - name: roomAliasId
+          in: path
+          required: true
+          description: 部屋エイリアスID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 部屋情報の取得に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roomNumber:
+                    type: string
+                    description: 部屋番号
+                  roomName:
+                    type: string
+                    nullable: true
+                    description: 部屋名（設定されていない場合はnull）
+                  isOccupied:
+                    type: boolean
+                    description: 使用中フラグ
+                  interiors:
+                    type: array
+                    description: 内装情報
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          description: 内装タイプコード
+                        typeName:
+                          type: string
+                          description: 内装タイプ名
+                        pattern:
+                          type: integer
+                          description: 内装パターンID
+                        patternName:
+                          type: string
+                          description: 内装パターン名
+                  playlists:
+                    type: array
+                    description: プレイリスト情報
+                    items:
+                      type: string
+                      description: プレイリストURL
+        "404":
+          description: 部屋が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/name:
+    post:
+      summary: 部屋名更新
+      description: ログインIDを指定し、部屋名を更新します
+      operationId: updateRoomName
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - loginId
+                - roomName
+              properties:
+                loginId:
+                  type: string
+                  description: ログインID
+                roomName:
+                  type: string
+                  description: 新しい部屋名
+      responses:
+        "200":
+          description: 部屋名の更新に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  roomName:
+                    type: string
+                    description: 更新された部屋名
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 部屋が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/interiors:
+    post:
+      summary: 内装変更
+      description: ログインIDを指定し、内装を変更します
+      operationId: updateInteriors
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - loginId
+                - interiors
+              properties:
+                loginId:
+                  type: string
+                  description: ログインID
+                interiors:
+                  type: array
+                  description: 内装情報
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - pattern
+                    properties:
+                      type:
+                        type: string
+                        description: 内装タイプコード
+                      pattern:
+                        type: integer
+                        description: 内装パターンID
+      responses:
+        "200":
+          description: 内装の更新に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 部屋が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/playlists:
+    post:
+      summary: プレイリスト更新
+      description: ログインIDを指定し、プレイリストを更新します
+      operationId: updatePlaylists
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - loginId
+                - playlists
+              properties:
+                loginId:
+                  type: string
+                  description: ログインID
+                playlists:
+                  type: array
+                  description: プレイリスト情報
+                  items:
+                    type: string
+                    description: プレイリストURL
+      responses:
+        "200":
+          description: プレイリストの更新に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 部屋が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /interior-types:
+    get:
+      summary: 内装タイプ一覧取得
+      description: 全ての内装タイプを取得します
+      operationId: getInteriorTypes
+      responses:
+        "200":
+          description: 内装タイプの取得に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  types:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: 内装タイプID
+                        code:
+                          type: string
+                          description: 内装タイプコード
+                        name:
+                          type: string
+                          description: 内装タイプ名
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /interior-patterns:
+    get:
+      summary: 内装パターン一覧取得
+      description: 全ての内装パターンを取得します
+      operationId: getInteriorPatterns
+      responses:
+        "200":
+          description: 内装パターンの取得に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  patterns:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: 内装パターンID
+                        name:
+                          type: string
+                          description: 内装パターン名
+                        description:
+                          type: string
+                          nullable: true
+                          description: 内装パターンの説明
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /interior-combinations:
+    get:
+      summary: 内装タイプとパターンの組み合わせ一覧取得
+      description: 内装タイプとパターンの組み合わせを取得します
+      operationId: getInteriorCombinations
+      responses:
+        "200":
+          description: 内装タイプとパターンの組み合わせの取得に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  combinations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              description: 内装タイプID
+                            code:
+                              type: string
+                              description: 内装タイプコード
+                            name:
+                              type: string
+                              description: 内装タイプ名
+                        patterns:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: 内装パターンID
+                              name:
+                                type: string
+                                description: 内装パターン名
+                              description:
+                                type: string
+                                nullable: true
+                                description: 内装パターンの説明
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post:
+      summary: ログイン認証
+      description: ログインIDを確認し、使用中のIDである場合にTRUE、未使用や存在しない場合にはFALSEを返します
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - loginId
+              properties:
+                loginId:
+                  type: string
+                  description: ログインID
+      responses:
+        "200":
+          description: ログイン認証の結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ（部屋が存在し、かつ使用中の場合はtrue）
+                  roomNumber:
+                    type: string
+                    description: 部屋番号
+                  roomName:
+                    type: string
+                    nullable: true
+                    description: 部屋名（設定されていない場合はnull）
+                  message:
+                    type: string
+                    description: 結果に関するメッセージ
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/interior-types:
+    post:
+      summary: 内装タイプ追加
+      description: 新しい内装タイプを追加します
+      operationId: addInteriorType
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - name
+              properties:
+                code:
+                  type: string
+                  description: 内装タイプコード
+                name:
+                  type: string
+                  description: 内装タイプ名
+      responses:
+        "200":
+          description: 内装タイプの追加に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  type:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: 内装タイプID
+                      code:
+                        type: string
+                        description: 内装タイプコード
+                      name:
+                        type: string
+                        description: 内装タイプ名
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/interior-types/{id}:
+    put:
+      summary: 内装タイプ更新
+      description: 既存の内装タイプを更新します
+      operationId: updateInteriorType
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 内装タイプID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: 内装タイプコード
+                name:
+                  type: string
+                  description: 内装タイプ名
+      responses:
+        "200":
+          description: 内装タイプの更新に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  type:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: 内装タイプID
+                      code:
+                        type: string
+                        description: 内装タイプコード
+                      name:
+                        type: string
+                        description: 内装タイプ名
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 内装タイプが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: 内装タイプ削除
+      description: 既存の内装タイプを削除します（使用中の場合は削除できません）
+      operationId: deleteInteriorType
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 内装タイプID
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 内装タイプの削除に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  message:
+                    type: string
+                    description: 結果に関するメッセージ
+        "400":
+          description: リクエストエラー（使用中のため削除できないなど）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: エラーメッセージ
+                  usedCount:
+                    type: integer
+                    description: 使用中の数
+        "404":
+          description: 内装タイプが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/interior-patterns:
+    post:
+      summary: 内装パターン追加
+      description: 新しい内装パターンを追加します
+      operationId: addInteriorPattern
+      tags:
+        - admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: 内装パターン名
+                description:
+                  type: string
+                  description: 内装パターンの説明
+      responses:
+        "200":
+          description: 内装パターンの追加に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  pattern:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: 内装パターンID
+                      name:
+                        type: string
+                        description: 内装パターン名
+                      description:
+                        type: string
+                        nullable: true
+                        description: 内装パターンの説明
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/interior-patterns/{id}:
+    put:
+      summary: 内装パターン更新
+      description: 既存の内装パターンを更新します
+      operationId: updateInteriorPattern
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 内装パターンID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 内装パターン名
+                description:
+                  type: string
+                  nullable: true
+                  description: 内装パターンの説明
+      responses:
+        "200":
+          description: 内装パターンの更新に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  pattern:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: 内装パターンID
+                      name:
+                        type: string
+                        description: 内装パターン名
+                      description:
+                        type: string
+                        nullable: true
+                        description: 内装パターンの説明
+        "400":
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: 内装パターンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: 内装パターン削除
+      description: 既存の内装パターンを削除します（使用中の場合は削除できません）
+      operationId: deleteInteriorPattern
+      tags:
+        - admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 内装パターンID
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 内装パターンの削除に成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: 成功フラグ
+                  message:
+                    type: string
+                    description: 結果に関するメッセージ
+        "400":
+          description: リクエストエラー（使用中のため削除できないなど）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: エラーメッセージ
+                  usedCount:
+                    type: integer
+                    description: 使用中の数
+        "404":
+          description: 内装パターンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: エラーメッセージ
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+      description: APIキー認証
+
+tags:
+  - name: admin
+    description: 管理者用API

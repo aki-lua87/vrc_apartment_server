@@ -4,7 +4,8 @@ import { authAPI } from '../api';
 // 認証状態の型定義
 type AuthState = {
   isAuthenticated: boolean;
-  userId: string | null;
+  roomNumber: string | null;
+  roomName: string | null;
   isLoading: boolean;
   error: string | null;
 };
@@ -12,7 +13,8 @@ type AuthState = {
 // 初期状態
 const initialState: AuthState = {
   isAuthenticated: false,
-  userId: null,
+  roomNumber: null,
+  roomName: null,
   isLoading: false,
   error: null,
 };
@@ -24,30 +26,6 @@ function createAuthStore() {
   return {
     subscribe,
     
-    // 現在のユーザー情報を取得
-    async checkAuth() {
-      update(state => ({ ...state, isLoading: true, error: null }));
-      
-      try {
-        const user = await authAPI.getCurrentUser();
-        set({
-          isAuthenticated: true,
-          userId: user.userId,
-          isLoading: false,
-          error: null,
-        });
-        return true;
-      } catch (error) {
-        set({
-          isAuthenticated: false,
-          userId: null,
-          isLoading: false,
-          error: null, // エラーをクリア（認証チェックの失敗は通常のフロー）
-        });
-        return false;
-      }
-    },
-    
     // ログイン
     async login(loginId: string) {
       update(state => ({ ...state, isLoading: true, error: null }));
@@ -56,7 +34,8 @@ function createAuthStore() {
         const result = await authAPI.login(loginId);
         set({
           isAuthenticated: result.success,
-          userId: result.userId,
+          roomNumber: result.roomNumber,
+          roomName: result.roomName,
           isLoading: false,
           error: null,
         });
@@ -66,6 +45,8 @@ function createAuthStore() {
         update(state => ({
           ...state,
           isAuthenticated: false,
+          roomNumber: null,
+          roomName: null,
           isLoading: false,
           error: errorMessage,
         }));
@@ -73,23 +54,10 @@ function createAuthStore() {
       }
     },
     
-    // ログアウト
-    async logout() {
-      update(state => ({ ...state, isLoading: true }));
-      
-      try {
-        await authAPI.logout();
-        set(initialState);
-        return true;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
-        update(state => ({
-          ...state,
-          isLoading: false,
-          error: errorMessage,
-        }));
-        return false;
-      }
+    // ログアウト（クライアント側のみ）
+    logout() {
+      set(initialState);
+      return true;
     },
     
     // エラーをクリア

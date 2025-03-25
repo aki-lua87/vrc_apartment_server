@@ -5,12 +5,13 @@
   import TextField from '../../lib/components/TextField.svelte';
   import Modal from '../../lib/components/Modal.svelte';
   import { authStore } from '../../lib/stores/auth';
-  import { roomStore, furnitureStore } from '../../lib/stores/room';
+  import { roomStore, interiorStore } from '../../lib/stores/room';
+  import type { InteriorType, InteriorPattern } from '../../lib/api';
   
   // 認証チェック
-  onMount(async () => {
+  onMount(() => {
     try {
-      const isAuthenticated = await authStore.checkAuth();
+      const { isAuthenticated } = $authStore;
       if (!isAuthenticated) {
         // 未認証の場合はログイン画面へリダイレクト
         goto('/');
@@ -20,20 +21,22 @@
       // 部屋情報を取得
       // 注: 実際のアプリでは、ユーザーIDに基づいて部屋IDを取得する処理が必要
       // ここでは簡略化のため、固定の部屋IDを使用
-      const roomId = 'room1';
-      await roomStore.fetchRoom(roomId);
+      const roomAliasId = 'room1';
+      roomStore.fetchRoom(roomAliasId);
       
-      // 家具タイプの一覧を取得
-      await furnitureStore.fetchFurnitureTypes();
+      // 内装タイプと内装パターンの一覧を取得
+      interiorStore.fetchInteriorTypes();
+      interiorStore.fetchInteriorPatterns();
+      interiorStore.fetchInteriorCombinations();
     } catch (error) {
       console.error('初期化エラー:', error);
     }
   });
   
   // ログアウト処理
-  async function handleLogout() {
+  function handleLogout() {
     try {
-      await authStore.logout();
+      authStore.logout();
       goto('/');
     } catch (error) {
       console.error('ログアウトエラー:', error);
@@ -47,7 +50,7 @@
   
   function openRoomNameModal() {
     if ($roomStore.currentRoom) {
-      newRoomName = $roomStore.currentRoom.name;
+      newRoomName = $roomStore.currentRoom.roomName || '';
       roomNameError = '';
       isRoomNameModalOpen = true;
     }
@@ -60,7 +63,9 @@
     }
     
     try {
-      await roomStore.updateRoomName(newRoomName);
+      // ログインIDが必要 - 実際のアプリでは認証情報から取得
+      const loginId = 'login1'; // 仮のログインID
+      await roomStore.updateRoomName(loginId, newRoomName);
       isRoomNameModalOpen = false;
     } catch (error) {
       roomNameError = error instanceof Error ? error.message : '不明なエラーが発生しました';
@@ -68,40 +73,45 @@
   }
   
   // 内装編集
-  let isFurnitureModalOpen = false;
-  let selectedFurnitureType = '';
-  let furnitureItems: import('../../lib/stores/room').Furniture[] = [];
+  let isInteriorModalOpen = false;
+  let selectedInteriorType: InteriorType | null = null;
+  let selectedPatterns: InteriorPattern[] = [];
   
-  async function openFurnitureModal(furnitureType: string) {
-    selectedFurnitureType = furnitureType;
+  function openInteriorModal(type: InteriorType) {
+    selectedInteriorType = type;
     
-    try {
-      // 選択された家具タイプの一覧を取得
-      const items = await furnitureStore.fetchFurnitureByType(furnitureType);
-      furnitureItems = items;
-      isFurnitureModalOpen = true;
-    } catch (error) {
-      console.error('家具一覧取得エラー:', error);
+    // 選択されたタイプに対応するパターンを取得
+    const combination = $interiorStore.combinations.find(c => c.type.id === type.id);
+    if (combination) {
+      selectedPatterns = combination.patterns;
+      isInteriorModalOpen = true;
     }
   }
   
-  async function selectFurniture(furnitureId: string) {
+  async function selectInteriorPattern(patternId: number) {
+    if (!selectedInteriorType) return;
+    
     try {
-      await roomStore.updateFurniture(selectedFurnitureType, furnitureId);
-      isFurnitureModalOpen = false;
+      // ログインIDが必要 - 実際のアプリでは認証情報から取得
+      const loginId = 'login1'; // 仮のログインID
+      
+      // 内装を更新
+      await roomStore.updateInteriors(loginId, [
+        { type: selectedInteriorType.code, pattern: patternId }
+      ]);
+      
+      isInteriorModalOpen = false;
     } catch (error) {
-      console.error('家具更新エラー:', error);
+      console.error('内装更新エラー:', error);
     }
   }
   
   // プレイリスト編集
   let isPlaylistModalOpen = false;
-  let newPlaylistTitle = '';
   let newPlaylistUrl = '';
   let playlistError = '';
   
   function openPlaylistModal() {
-    newPlaylistTitle = '';
     newPlaylistUrl = '';
     playlistError = '';
     isPlaylistModalOpen = true;
@@ -109,18 +119,16 @@
   
   function removePlaylistItem(index: number) {
     if ($roomStore.currentRoom) {
-      const updatedPlaylist = [...$roomStore.currentRoom.playlist];
-      updatedPlaylist.splice(index, 1);
-      roomStore.updatePlaylist(updatedPlaylist);
+      const updatedPlaylists = [...$roomStore.currentRoom.playlists];
+      updatedPlaylists.splice(index, 1);
+      
+      // ログインIDが必要 - 実際のアプリでは認証情報から取得
+      const loginId = 'login1'; // 仮のログインID
+      roomStore.updatePlaylists(loginId, updatedPlaylists);
     }
   }
   
   async function addPlaylistItem() {
-    if (!newPlaylistTitle.trim()) {
-      playlistError = 'タイトルを入力してください';
-      return;
-    }
-    
     if (!newPlaylistUrl.trim()) {
       playlistError = 'URLを入力してください';
       return;
@@ -136,19 +144,20 @@
     
     if ($roomStore.currentRoom) {
       // プレイリストは最大10件まで
-      if ($roomStore.currentRoom.playlist.length >= 10) {
+      if ($roomStore.currentRoom.playlists.length >= 10) {
         playlistError = 'プレイリストは最大10件までです';
         return;
       }
       
-      const updatedPlaylist = [
-        ...$roomStore.currentRoom.playlist,
-        { title: newPlaylistTitle, url: newPlaylistUrl }
+      const updatedPlaylists = [
+        ...$roomStore.currentRoom.playlists,
+        newPlaylistUrl
       ];
       
       try {
-        await roomStore.updatePlaylist(updatedPlaylist);
-        newPlaylistTitle = '';
+        // ログインIDが必要 - 実際のアプリでは認証情報から取得
+        const loginId = 'login1'; // 仮のログインID
+        await roomStore.updatePlaylists(loginId, updatedPlaylists);
         newPlaylistUrl = '';
         playlistError = '';
       } catch (error) {
@@ -182,7 +191,7 @@
       <div class="bg-white shadow rounded-lg overflow-hidden mb-8">
         <div class="p-6">
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-semibold text-gray-900">{$roomStore.currentRoom.name}</h2>
+            <h2 class="text-xl font-semibold text-gray-900">{$roomStore.currentRoom.roomName || '名称未設定'}</h2>
             <Button variant="outline" size="sm" on:click={openRoomNameModal}>部屋名を編集</Button>
           </div>
           
@@ -190,28 +199,28 @@
           <div class="mb-8">
             <h3 class="text-lg font-medium text-gray-900 mb-4">内装編集</h3>
             
-            {#if $furnitureStore.isLoading}
-              <p>家具タイプを読み込み中...</p>
-            {:else if $furnitureStore.error}
-              <p class="text-red-600">{$furnitureStore.error}</p>
-            {:else if $furnitureStore.types.length === 0}
-              <p>家具タイプがありません</p>
+            {#if $interiorStore.isLoading}
+              <p>内装タイプを読み込み中...</p>
+            {:else if $interiorStore.error}
+              <p class="text-red-600">{$interiorStore.error}</p>
+            {:else if $interiorStore.types.length === 0}
+              <p>内装タイプがありません</p>
             {:else}
               <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {#each $furnitureStore.types as furnitureType}
+                {#each $interiorStore.types as type}
                   <div class="border rounded-lg p-4 bg-gray-50">
                     <div class="flex justify-between items-center">
-                      <h4 class="font-medium">{furnitureType}</h4>
+                      <h4 class="font-medium">{type.name}</h4>
                       <Button 
                         variant="secondary" 
                         size="sm" 
-                        on:click={() => openFurnitureModal(furnitureType)}
+                        on:click={() => openInteriorModal(type)}
                       >
                         変更
                       </Button>
                     </div>
                     <p class="mt-2 text-sm text-gray-600">
-                      現在: {$roomStore.currentRoom.furniture[furnitureType] || 'なし'}
+                      コード: {type.code}
                     </p>
                   </div>
                 {/each}
@@ -227,31 +236,29 @@
                 variant="primary" 
                 size="sm" 
                 on:click={openPlaylistModal}
-                disabled={$roomStore.currentRoom.playlist.length >= 10}
+                disabled={$roomStore.currentRoom.playlists.length >= 10}
               >
                 追加
               </Button>
             </div>
             
-            {#if $roomStore.currentRoom.playlist.length === 0}
+            {#if $roomStore.currentRoom.playlists.length === 0}
               <p class="text-gray-600">プレイリストはまだありません</p>
             {:else}
               <div class="border rounded-lg overflow-hidden">
                 <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gray-50">
                     <tr>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">タイトル</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
                       <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                     </tr>
                   </thead>
                   <tbody class="bg-white divide-y divide-gray-200">
-                    {#each $roomStore.currentRoom.playlist as item, index}
+                    {#each $roomStore.currentRoom.playlists as url, index}
                       <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.title}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">
-                          <a href={item.url} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">
-                            {item.url}
+                          <a href={url} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline">
+                            {url}
                           </a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -301,38 +308,34 @@
   </div>
 </Modal>
 
-<!-- 家具選択モーダル -->
+<!-- 内装パターン選択モーダル -->
 <Modal
-  open={isFurnitureModalOpen}
-  title={`${selectedFurnitureType}を選択`}
-  on:close={() => isFurnitureModalOpen = false}
+  open={isInteriorModalOpen}
+  title={selectedInteriorType ? `${selectedInteriorType.name}のパターンを選択` : 'パターンを選択'}
+  on:close={() => isInteriorModalOpen = false}
 >
-  {#if $furnitureStore.isLoading}
+  {#if $interiorStore.isLoading}
     <p>読み込み中...</p>
-  {:else if furnitureItems.length === 0}
-    <p>利用可能な家具がありません</p>
+  {:else if selectedPatterns.length === 0}
+    <p>利用可能なパターンがありません</p>
   {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto p-1">
-      {#each furnitureItems as item}
+      {#each selectedPatterns as pattern}
         <div 
           class="border rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-          on:click={() => selectFurniture(item.id)}
+          on:click={() => selectInteriorPattern(pattern.id)}
         >
-          {#if item.imageUrl}
-            <img src={item.imageUrl} alt={item.name} class="w-full h-32 object-cover rounded mb-2" />
-          {:else}
-            <div class="w-full h-32 bg-gray-200 rounded mb-2 flex items-center justify-center">
-              <span class="text-gray-500">画像なし</span>
-            </div>
+          <p class="font-medium">{pattern.name}</p>
+          {#if pattern.description}
+            <p class="text-sm text-gray-600 mt-1">{pattern.description}</p>
           {/if}
-          <p class="font-medium">{item.name}</p>
         </div>
       {/each}
     </div>
   {/if}
   
   <div slot="footer" class="flex justify-end">
-    <Button variant="ghost" on:click={() => isFurnitureModalOpen = false}>キャンセル</Button>
+    <Button variant="ghost" on:click={() => isInteriorModalOpen = false}>キャンセル</Button>
   </div>
 </Modal>
 
@@ -344,17 +347,10 @@
 >
   <div class="space-y-4">
     <TextField
-      id="playlistTitle"
-      label="タイトル"
-      bind:value={newPlaylistTitle}
-      error={playlistError}
-      fullWidth={true}
-    />
-    
-    <TextField
       id="playlistUrl"
       label="URL"
       bind:value={newPlaylistUrl}
+      error={playlistError}
       placeholder="https://..."
       fullWidth={true}
     />

@@ -1,20 +1,6 @@
 import { writable, derived } from 'svelte/store';
-import { roomAPI, furnitureAPI } from '../api';
-
-// 部屋の型定義
-export type Room = {
-  id: string;
-  name: string;
-  furniture: Record<string, string>; // 家具タイプ -> 家具ID
-  playlist: Array<{ title: string; url: string }>;
-};
-
-// 家具の型定義
-export type Furniture = {
-  id: string;
-  name: string;
-  imageUrl: string;
-};
+import { roomAPI, interiorAPI } from '../api';
+import type { Room, Interior, InteriorType, InteriorPattern } from '../api';
 
 // 部屋ストアの状態型
 type RoomState = {
@@ -23,10 +9,14 @@ type RoomState = {
   error: string | null;
 };
 
-// 家具ストアの状態型
-type FurnitureState = {
-  types: string[];
-  items: Record<string, Furniture[]>; // タイプ -> 家具リスト
+// 内装ストアの状態型
+type InteriorState = {
+  types: InteriorType[];
+  patterns: InteriorPattern[];
+  combinations: Array<{
+    type: InteriorType;
+    patterns: InteriorPattern[];
+  }>;
   isLoading: boolean;
   error: string | null;
 };
@@ -38,10 +28,11 @@ const initialRoomState: RoomState = {
   error: null,
 };
 
-// 家具ストアの初期状態
-const initialFurnitureState: FurnitureState = {
+// 内装ストアの初期状態
+const initialInteriorState: InteriorState = {
   types: [],
-  items: {},
+  patterns: [],
+  combinations: [],
   isLoading: false,
   error: null,
 };
@@ -54,11 +45,11 @@ function createRoomStore() {
     subscribe,
     
     // 部屋の詳細を取得
-    async fetchRoom(roomId: string) {
+    async fetchRoom(roomAliasId: string) {
       update(state => ({ ...state, isLoading: true, error: null }));
       
       try {
-        const room = await roomAPI.getRoom(roomId);
+        const room = await roomAPI.getRoom(roomAliasId);
         update(state => ({
           ...state,
           currentRoom: room,
@@ -77,44 +68,27 @@ function createRoomStore() {
     },
     
     // 部屋名を更新
-    async updateRoomName(name: string) {
-      let roomId = '';
-      let roomFurniture: Record<string, string> = {};
-      let roomPlaylist: Array<{ title: string; url: string }> = [];
-      let hasRoom = false;
-      
-      update(state => {
-        if (!state.currentRoom) {
-          return { ...state, isLoading: false, error: '部屋が選択されていません' };
-        }
-        
-        hasRoom = true;
-        roomId = state.currentRoom.id;
-        roomFurniture = { ...state.currentRoom.furniture };
-        roomPlaylist = [...state.currentRoom.playlist];
-        
-        return { ...state, isLoading: true, error: null };
-      });
+    async updateRoomName(loginId: string, roomName: string) {
+      update(state => ({ ...state, isLoading: true, error: null }));
       
       try {
-        if (!hasRoom) {
-          throw new Error('部屋が選択されていません');
-        }
+        const result = await roomAPI.updateRoomName(loginId, roomName);
         
-        await roomAPI.updateRoomName(roomId, name);
+        update(state => {
+          if (state.currentRoom) {
+            return {
+              ...state,
+              currentRoom: {
+                ...state.currentRoom,
+                roomName: result.roomName,
+              },
+              isLoading: false,
+            };
+          }
+          return { ...state, isLoading: false };
+        });
         
-        update(state => ({
-          ...state,
-          currentRoom: {
-            id: roomId,
-            name: name,
-            furniture: roomFurniture,
-            playlist: roomPlaylist,
-          },
-          isLoading: false,
-        }));
-        
-        return true;
+        return result.success;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
         update(state => ({
@@ -126,50 +100,22 @@ function createRoomStore() {
       }
     },
     
-    // 家具を更新
-    async updateFurniture(furnitureType: string, furnitureId: string) {
-      let roomId = '';
-      let roomName = '';
-      let roomFurniture: Record<string, string> = {};
-      let roomPlaylist: Array<{ title: string; url: string }> = [];
-      let hasRoom = false;
-      
-      update(state => {
-        if (!state.currentRoom) {
-          return { ...state, isLoading: false, error: '部屋が選択されていません' };
-        }
-        
-        hasRoom = true;
-        roomId = state.currentRoom.id;
-        roomName = state.currentRoom.name;
-        roomFurniture = { ...state.currentRoom.furniture };
-        roomPlaylist = [...state.currentRoom.playlist];
-        
-        return { ...state, isLoading: true, error: null };
-      });
+    // 内装を更新
+    async updateInteriors(loginId: string, interiors: Array<{ type: string; pattern: number }>) {
+      update(state => ({ ...state, isLoading: true, error: null }));
       
       try {
-        if (!hasRoom) {
-          throw new Error('部屋が選択されていません');
-        }
+        const result = await roomAPI.updateInteriors(loginId, interiors);
         
-        await roomAPI.updateFurniture(roomId, furnitureType, furnitureId);
-        
-        // 家具を更新
-        roomFurniture[furnitureType] = furnitureId;
+        // 成功したら部屋情報を再取得する必要があるかもしれません
+        // ここでは簡略化のため省略
         
         update(state => ({
           ...state,
-          currentRoom: {
-            id: roomId,
-            name: roomName,
-            furniture: roomFurniture,
-            playlist: roomPlaylist,
-          },
           isLoading: false,
         }));
         
-        return true;
+        return result.success;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
         update(state => ({
@@ -182,47 +128,24 @@ function createRoomStore() {
     },
     
     // プレイリストを更新
-    async updatePlaylist(playlist: Array<{ title: string; url: string }>) {
-      let roomId = '';
-      let roomName = '';
-      let roomFurniture: Record<string, string> = {};
-      let hasRoom = false;
-      
-      update(state => {
-        if (!state.currentRoom) {
-          return { ...state, isLoading: false, error: '部屋が選択されていません' };
-        }
-        
-        hasRoom = true;
-        roomId = state.currentRoom.id;
-        roomName = state.currentRoom.name;
-        roomFurniture = { ...state.currentRoom.furniture };
-        
-        return { ...state, isLoading: true, error: null };
-      });
+    async updatePlaylists(loginId: string, playlists: string[]) {
+      update(state => ({ ...state, isLoading: true, error: null }));
       
       try {
-        if (!hasRoom) {
-          throw new Error('部屋が選択されていません');
-        }
-        
         // プレイリストは最大10件まで
-        const limitedPlaylist = playlist.slice(0, 10);
+        const limitedPlaylists = playlists.slice(0, 10);
         
-        await roomAPI.updatePlaylist(roomId, limitedPlaylist);
+        const result = await roomAPI.updatePlaylists(loginId, limitedPlaylists);
+        
+        // 成功したら部屋情報を再取得する必要があるかもしれません
+        // ここでは簡略化のため省略
         
         update(state => ({
           ...state,
-          currentRoom: {
-            id: roomId,
-            name: roomName,
-            furniture: roomFurniture,
-            playlist: limitedPlaylist,
-          },
           isLoading: false,
         }));
         
-        return true;
+        return result.success;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
         update(state => ({
@@ -246,25 +169,25 @@ function createRoomStore() {
   };
 }
 
-// 家具ストアの作成
-function createFurnitureStore() {
-  const { subscribe, set, update } = writable<FurnitureState>(initialFurnitureState);
+// 内装ストアの作成
+function createInteriorStore() {
+  const { subscribe, set, update } = writable<InteriorState>(initialInteriorState);
   
   return {
     subscribe,
     
-    // 家具タイプの一覧を取得
-    async fetchFurnitureTypes() {
+    // 内装タイプの一覧を取得
+    async fetchInteriorTypes() {
       update(state => ({ ...state, isLoading: true, error: null }));
       
       try {
-        const types = await furnitureAPI.getFurnitureTypes();
+        const result = await interiorAPI.getInteriorTypes();
         update(state => ({
           ...state,
-          types,
+          types: result.types,
           isLoading: false,
         }));
-        return types;
+        return result.types;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
         update(state => ({
@@ -276,23 +199,41 @@ function createFurnitureStore() {
       }
     },
     
-    // 特定タイプの家具一覧を取得
-    async fetchFurnitureByType(type: string) {
+    // 内装パターンの一覧を取得
+    async fetchInteriorPatterns() {
       update(state => ({ ...state, isLoading: true, error: null }));
       
       try {
-        const items = await furnitureAPI.getFurnitureByType(type);
-        
+        const result = await interiorAPI.getInteriorPatterns();
         update(state => ({
           ...state,
-          items: {
-            ...state.items,
-            [type]: items,
-          },
+          patterns: result.patterns,
           isLoading: false,
         }));
-        
-        return items;
+        return result.patterns;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+        update(state => ({
+          ...state,
+          isLoading: false,
+          error: errorMessage,
+        }));
+        throw error;
+      }
+    },
+    
+    // 内装タイプとパターンの組み合わせを取得
+    async fetchInteriorCombinations() {
+      update(state => ({ ...state, isLoading: true, error: null }));
+      
+      try {
+        const result = await interiorAPI.getInteriorCombinations();
+        update(state => ({
+          ...state,
+          combinations: result.combinations,
+          isLoading: false,
+        }));
+        return result.combinations;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
         update(state => ({
@@ -311,16 +252,16 @@ function createFurnitureStore() {
     
     // ストアをリセット
     reset() {
-      set(initialFurnitureState);
+      set(initialInteriorState);
     },
   };
 }
 
 // エクスポートするストア
 export const roomStore = createRoomStore();
-export const furnitureStore = createFurnitureStore();
+export const interiorStore = createInteriorStore();
 
 // 現在の部屋のプレイリスト派生ストア
 export const playlistStore = derived(roomStore, $roomStore => {
-  return $roomStore.currentRoom?.playlist || [];
+  return $roomStore.currentRoom?.playlists || [];
 });

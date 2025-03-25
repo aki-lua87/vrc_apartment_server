@@ -35,10 +35,12 @@
   }
   
   // 既にログイン済みの場合は部屋編集画面へリダイレクト
-  onMount(async () => {
+  onMount(() => {
     isLoading = true;
     try {
-      const isAuthenticated = await authStore.checkAuth();
+      // 新しいAPIではcheckAuth()メソッドがないため、
+      // クライアント側で認証状態を確認する
+      const { isAuthenticated } = $authStore;
       if (isAuthenticated) {
         goto('/room');
       }
