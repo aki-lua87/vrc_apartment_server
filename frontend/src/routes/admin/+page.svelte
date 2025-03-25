@@ -88,13 +88,14 @@
         </div>
 
         <div class="mt-6">
-          <Button
-            variant="outline"
-            fullWidth={true}
-            on:click={() => goto('/')}
-          >
-            通常ログイン画面へ戻る
-          </Button>
+          <a href="/" class="block w-full">
+            <Button
+              variant="outline"
+              fullWidth={true}
+            >
+              通常ログイン画面へ戻る
+            </Button>
+          </a>
         </div>
       </div>
     </div>
