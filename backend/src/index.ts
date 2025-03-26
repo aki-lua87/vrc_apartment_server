@@ -321,22 +321,29 @@ app.post('/api/rooms/interiors', async (c) => {
         continue;
       }
 
-      // 既存の内装を検索
-      const existingInterior = await db.select()
+      // パターンの内装タイプIDが一致するか確認
+      if (patternRecord.typeId !== typeRecord.id) {
+        console.error(`内装パターンと内装タイプが一致しません: パターンID=${interior.pattern}, タイプ=${interior.type}`);
+        continue;
+      }
+
+      // 既存の内装を検索（部屋IDと内装タイプIDで検索）
+      const existingInteriors = await db.select()
         .from(schema.interiors)
+        .leftJoin(schema.interiorPatterns, eq(schema.interiors.patternId, schema.interiorPatterns.id))
         .where(
           and(
             eq(schema.interiors.roomId, room.id),
-            eq(schema.interiors.patternId, typeRecord.id)
+            eq(schema.interiorPatterns.typeId, typeRecord.id)
           )
         )
-        .get();
+        .all();
 
-      if (existingInterior) {
-        // 既存の内装を更新
+      if (existingInteriors.length > 0) {
+        // 既存の内装を更新（同じタイプの内装は1つだけ許可）
         await db.update(schema.interiors)
           .set({ patternId: patternRecord.id })
-          .where(eq(schema.interiors.id, existingInterior.id))
+          .where(eq(schema.interiors.id, existingInteriors[0].interiors.id))
           .run();
       } else {
         // 新しい内装を追加
@@ -500,26 +507,31 @@ app.get('/api/interior-combinations', async (c) => {
       name: schema.interiorTypes.name,
     }).from(schema.interiorTypes).all();
 
-    // 全ての内装パターンを取得
-    const patterns = await db.select({
-      id: schema.interiorPatterns.id,
-      name: schema.interiorPatterns.name,
-    }).from(schema.interiorPatterns).all();
-
     // 組み合わせを作成
-    const combinations = types.map(type => {
-      return {
+    const combinations = [];
+    
+    for (const type of types) {
+      // 各タイプに対応するパターンを取得
+      const typePatterns = await db.select({
+        id: schema.interiorPatterns.id,
+        name: schema.interiorPatterns.name,
+      })
+      .from(schema.interiorPatterns)
+      .where(eq(schema.interiorPatterns.typeId, type.id))
+      .all();
+      
+      combinations.push({
         type: {
           id: type.id,
           code: type.code,
           name: type.name,
         },
-        patterns: patterns.map(pattern => ({
+        patterns: typePatterns.map(pattern => ({
           id: pattern.id,
           name: pattern.name,
         })),
-      };
-    });
+      });
+    }
 
     return c.json({ combinations });
   } catch (error) {

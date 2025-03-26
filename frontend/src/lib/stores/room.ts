@@ -130,8 +130,10 @@ function createRoomStore() {
       try {
         const result = await roomAPI.updateInteriors(loginId, interiors);
         
-        // 成功したら部屋情報を再取得する必要があるかもしれません
-        // ここでは簡略化のため省略
+        // 成功したら部屋情報を再取得する
+        if (result.success) {
+          await this.fetchRoomByLoginId(loginId);
+        }
         
         update(state => ({
           ...state,
@@ -160,8 +162,10 @@ function createRoomStore() {
         
         const result = await roomAPI.updatePlaylists(loginId, limitedPlaylists);
         
-        // 成功したら部屋情報を再取得する必要があるかもしれません
-        // ここでは簡略化のため省略
+        // 成功したら部屋情報を再取得する
+        if (result.success) {
+          await this.fetchRoomByLoginId(loginId);
+        }
         
         update(state => ({
           ...state,

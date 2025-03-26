@@ -7,7 +7,9 @@
     "migrate": "wrangler d1 migrations apply DB --local",
     "seed": "ts-node src/seed.ts > seed/rooms.sql",
     "seed:apply": "wrangler d1 execute DB --local --file=./seed/rooms.sql",
-    "admin:insert": "wrangler d1 execute DB --local --file=./seed/admin.sql"
+    "admin:insert": "wrangler d1 execute DB --local --file=./seed/admin.sql",
+    "db:reset": "rm -R .wrangler/state/v3/d1/",
+    "db:init": "drizzle-kit generate && wrangler d1 migrations apply DB --local && wrangler d1 execute DB --local --file=./seed/admin.sql && wrangler d1 execute DB --local --file=./seed/rooms.sql"
   },
   "dependencies": {
     "drizzle-orm": "^0.41.0",

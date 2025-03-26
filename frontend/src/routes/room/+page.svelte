@@ -163,7 +163,7 @@
 		isPlaylistEditModalOpen = true;
 	}
 
-	function removePlaylistItem(index: number) {
+	async function removePlaylistItem(index: number) {
 		if ($roomStore.currentRoom) {
 			const updatedPlaylists = [...$roomStore.currentRoom.playlists];
 			updatedPlaylists.splice(index, 1);
@@ -175,7 +175,7 @@
 				return;
 			}
 
-			roomStore.updatePlaylists(loginId, updatedPlaylists);
+			await roomStore.updatePlaylists(loginId, updatedPlaylists);
 		}
 	}
 
