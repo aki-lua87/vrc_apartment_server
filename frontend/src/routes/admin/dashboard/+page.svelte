@@ -171,18 +171,23 @@
 
 	// 内装パターン追加モーダル
 	let isAddPatternModalOpen = false;
+	let newPatternTypeId: number | null = null;
 	let newPatternName = '';
-	let newPatternDescription = '';
 	let addPatternError = '';
 
 	function openAddPatternModal() {
+		newPatternTypeId = interiorTypes.length > 0 ? interiorTypes[0].id : null;
 		newPatternName = '';
-		newPatternDescription = '';
 		addPatternError = '';
 		isAddPatternModalOpen = true;
 	}
 
 	async function addInteriorPattern() {
+		if (!newPatternTypeId) {
+			addPatternError = '内装タイプを選択してください';
+			return;
+		}
+
 		if (!newPatternName.trim()) {
 			addPatternError = '名前を入力してください';
 			return;
@@ -191,7 +196,7 @@
 		addPatternError = '';
 
 		try {
-			await adminAPI.addInteriorPattern(newPatternName, newPatternDescription);
+			await adminAPI.addInteriorPattern(newPatternTypeId, newPatternName);
 			isAddPatternModalOpen = false;
 			await fetchInteriorPatterns();
 		} catch (error) {
@@ -203,13 +208,11 @@
 	let isEditPatternModalOpen = false;
 	let editingPatternId: number | null = null;
 	let editPatternName = '';
-	let editPatternDescription = '';
 	let editPatternError = '';
 
 	function openEditPatternModal(pattern: InteriorPattern) {
 		editingPatternId = pattern.id;
 		editPatternName = pattern.name;
-		editPatternDescription = pattern.description || '';
 		editPatternError = '';
 		isEditPatternModalOpen = true;
 	}
@@ -226,8 +229,7 @@
 
 		try {
 			await adminAPI.updateInteriorPattern(editingPatternId, {
-				name: editPatternName,
-				description: editPatternDescription || null
+				name: editPatternName
 			});
 			isEditPatternModalOpen = false;
 			await fetchInteriorPatterns();
@@ -378,10 +380,6 @@
 											>名前</th
 										>
 										<th
-											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-											>説明</th
-										>
-										<th
 											class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
 											>操作</th
 										>
@@ -394,9 +392,6 @@
 											>
 											<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900"
 												>{pattern.name}</td
-											>
-											<td class="max-w-xs truncate px-6 py-4 text-sm text-gray-500"
-												>{pattern.description || '-'}</td
 											>
 											<td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
 												<button
@@ -509,6 +504,19 @@
 	on:close={() => (isAddPatternModalOpen = false)}
 >
 	<div class="space-y-4">
+		<div>
+			<label for="newPatternTypeId" class="mb-1 block text-sm font-medium text-gray-700">内装タイプ</label>
+			<select
+				id="newPatternTypeId"
+				bind:value={newPatternTypeId}
+				class="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+			>
+				{#each interiorTypes as type}
+					<option value={type.id}>{type.name} ({type.code})</option>
+				{/each}
+			</select>
+		</div>
+
 		<TextField
 			id="newPatternName"
 			label="名前"
@@ -516,14 +524,6 @@
 			error={addPatternError}
 			fullWidth={true}
 			placeholder="例: モダン"
-		/>
-
-		<TextField
-			id="newPatternDescription"
-			label="説明"
-			bind:value={newPatternDescription}
-			fullWidth={true}
-			placeholder="例: モダンなデザインのパターン"
 		/>
 
 		<div class="flex justify-end space-x-3">
@@ -545,13 +545,6 @@
 			label="名前"
 			bind:value={editPatternName}
 			error={editPatternError}
-			fullWidth={true}
-		/>
-
-		<TextField
-			id="editPatternDescription"
-			label="説明"
-			bind:value={editPatternDescription}
 			fullWidth={true}
 		/>
 

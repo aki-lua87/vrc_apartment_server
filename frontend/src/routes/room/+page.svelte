@@ -94,6 +94,7 @@
 	let isInteriorModalOpen = false;
 	let selectedInteriorType: InteriorType | null = null;
 	let selectedPatterns: InteriorPattern[] = [];
+	let currentSelectedPatternId: number | null = null;
 
 	function openInteriorModal(type: InteriorType) {
 		selectedInteriorType = type;
@@ -102,6 +103,15 @@
 		const combination = $interiorStore.combinations.find((c) => c.type.id === type.id);
 		if (combination) {
 			selectedPatterns = combination.patterns;
+
+			// 現在選択されているパターンIDを取得
+			if ($roomStore.currentRoom) {
+				const currentInterior = $roomStore.currentRoom.interiors.find(
+					(interior) => interior.type === type.code
+				);
+				currentSelectedPatternId = currentInterior ? currentInterior.pattern : null;
+			}
+
 			isInteriorModalOpen = true;
 		}
 	}
@@ -121,6 +131,9 @@
 			await roomStore.updateInteriors(loginId, [
 				{ type: selectedInteriorType.code, pattern: patternId }
 			]);
+			
+			// 部屋情報を再取得して画面を更新
+			await roomStore.fetchRoomByLoginId(loginId);
 
 			isInteriorModalOpen = false;
 		} catch (error) {
@@ -130,13 +143,24 @@
 
 	// プレイリスト編集
 	let isPlaylistModalOpen = false;
+	let isPlaylistEditModalOpen = false;
 	let newPlaylistUrl = '';
+	let editPlaylistUrl = '';
+	let editPlaylistIndex = -1;
 	let playlistError = '';
+	let editPlaylistError = '';
 
 	function openPlaylistModal() {
 		newPlaylistUrl = '';
 		playlistError = '';
 		isPlaylistModalOpen = true;
+	}
+
+	function openPlaylistEditModal(url: string, index: number) {
+		editPlaylistUrl = url;
+		editPlaylistIndex = index;
+		editPlaylistError = '';
+		isPlaylistEditModalOpen = true;
 	}
 
 	function removePlaylistItem(index: number) {
@@ -155,6 +179,40 @@
 		}
 	}
 
+	async function updatePlaylistItem() {
+		if (!editPlaylistUrl.trim()) {
+			editPlaylistError = 'URLを入力してください';
+			return;
+		}
+
+		// URLの簡易バリデーション
+		try {
+			new URL(editPlaylistUrl);
+		} catch (e) {
+			editPlaylistError = '有効なURLを入力してください';
+			return;
+		}
+
+		if ($roomStore.currentRoom && editPlaylistIndex >= 0) {
+			const updatedPlaylists = [...$roomStore.currentRoom.playlists];
+			updatedPlaylists[editPlaylistIndex] = editPlaylistUrl;
+
+			try {
+				// ログインIDを取得
+				const loginId = getLoginIdFromAuthStore();
+				if (!loginId) {
+					editPlaylistError = 'ログインIDが取得できません';
+					return;
+				}
+
+				await roomStore.updatePlaylists(loginId, updatedPlaylists);
+				isPlaylistEditModalOpen = false;
+			} catch (error) {
+				editPlaylistError = error instanceof Error ? error.message : '不明なエラーが発生しました';
+			}
+		}
+	}
+
 	async function addPlaylistItem() {
 		if (!newPlaylistUrl.trim()) {
 			playlistError = 'URLを入力してください';
@@ -170,9 +228,9 @@
 		}
 
 		if ($roomStore.currentRoom) {
-			// プレイリストは最大10件まで
-			if ($roomStore.currentRoom.playlists.length >= 10) {
-				playlistError = 'プレイリストは最大10件までです';
+			// プレイリストは最大3件まで
+			if ($roomStore.currentRoom.playlists.length >= 3) {
+				playlistError = 'プレイリストは最大3件までです';
 				return;
 			}
 
@@ -253,6 +311,19 @@
 										<p class="mt-2 text-sm text-gray-600">
 											コード: {type.code}
 										</p>
+										{#if $roomStore.currentRoom}
+											{#if $roomStore.currentRoom.interiors.some(interior => interior.type === type.code)}
+												{#each $roomStore.currentRoom.interiors.filter(interior => interior.type === type.code) as interior}
+													<p class="mt-2 text-sm font-medium text-blue-600">
+														現在の選択: {interior.patternName}
+													</p>
+												{/each}
+											{:else}
+												<p class="mt-2 text-sm text-gray-500">
+													未選択
+												</p>
+											{/if}
+										{/if}
 									</div>
 								{/each}
 							</div>
@@ -267,7 +338,7 @@
 								variant="primary"
 								size="sm"
 								on:click={openPlaylistModal}
-								disabled={$roomStore.currentRoom.playlists.length >= 10}
+								disabled={$roomStore.currentRoom.playlists.length >= 3}
 							>
 								追加
 							</Button>
@@ -306,12 +377,20 @@
 													</a>
 												</td>
 												<td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-													<button
-														class="text-red-600 hover:text-red-900"
-														on:click={() => removePlaylistItem(index)}
-													>
-														削除
-													</button>
+													<div class="flex justify-end space-x-2">
+														<button
+															class="text-blue-600 hover:text-blue-900"
+															on:click={() => openPlaylistEditModal(url, index)}
+														>
+															編集
+														</button>
+														<button
+															class="text-red-600 hover:text-red-900"
+															on:click={() => removePlaylistItem(index)}
+														>
+															削除
+														</button>
+													</div>
 												</td>
 											</tr>
 										{/each}
@@ -366,13 +445,18 @@
 		<div class="grid max-h-96 grid-cols-1 gap-4 overflow-y-auto p-1 sm:grid-cols-2">
 			{#each selectedPatterns as pattern}
 				<div
-					class="cursor-pointer rounded-lg border p-4 transition-colors hover:bg-gray-50"
+					class="cursor-pointer rounded-lg border p-4 transition-colors hover:bg-gray-50 {currentSelectedPatternId ===
+					pattern.id
+						? 'border-blue-300 bg-blue-50'
+						: ''}"
 					on:click={() => selectInteriorPattern(pattern.id)}
 				>
-					<p class="font-medium">{pattern.name}</p>
-					{#if pattern.description}
-						<p class="mt-1 text-sm text-gray-600">{pattern.description}</p>
-					{/if}
+					<div class="flex items-center justify-between">
+						<p class="font-medium">{pattern.name}</p>
+						{#if currentSelectedPatternId === pattern.id}
+							<span class="text-sm font-medium text-blue-600">現在選択中</span>
+						{/if}
+					</div>
 				</div>
 			{/each}
 		</div>
@@ -402,6 +486,29 @@
 		<div class="flex justify-end space-x-3">
 			<Button variant="ghost" on:click={() => (isPlaylistModalOpen = false)}>キャンセル</Button>
 			<Button variant="primary" on:click={addPlaylistItem}>追加</Button>
+		</div>
+	</div>
+</Modal>
+
+<!-- プレイリスト編集モーダル -->
+<Modal
+	open={isPlaylistEditModalOpen}
+	title="プレイリストURLを編集"
+	on:close={() => (isPlaylistEditModalOpen = false)}
+>
+	<div class="space-y-4">
+		<TextField
+			id="editPlaylistUrl"
+			label="URL"
+			bind:value={editPlaylistUrl}
+			error={editPlaylistError}
+			placeholder="https://..."
+			fullWidth={true}
+		/>
+
+		<div class="flex justify-end space-x-3">
+			<Button variant="ghost" on:click={() => (isPlaylistEditModalOpen = false)}>キャンセル</Button>
+			<Button variant="primary" on:click={updatePlaylistItem}>保存</Button>
 		</div>
 	</div>
 </Modal>

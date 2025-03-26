@@ -860,6 +860,9 @@ app.get('/api/:loginId/playlist', async (c) => {
   const db = c.get('db');
   try {
     const loginId = c.req.param('loginId');
+    // クエリパラメータからインデックスを取得（デフォルトは0）
+    const indexParam = c.req.query('index');
+    const index = indexParam ? parseInt(indexParam, 10) : 0;
 
     // ログインIDから部屋を検索
     const room = await db.select().from(schema.rooms).where(eq(schema.rooms.loginId, loginId)).get();
@@ -870,14 +873,21 @@ app.get('/api/:loginId/playlist', async (c) => {
 
     // 部屋のプレイリスト情報を取得
     const roomPlaylists = await db.select().from(schema.playlists).where(eq(schema.playlists.roomId, room.id)).all();
-    // プレイリストの最初の項目を取得
-    const firstPlaylist = roomPlaylists[0];
+    
+    // 指定されたインデックスのプレイリスト項目を取得
+    if (index < 0 || index >= roomPlaylists.length) {
+      return c.json({ error: '指定されたインデックスのプレイリストが存在しません' }, 404);
+    }
+    
+    const playlist = roomPlaylists[index];
+    
     // URLの形式かチェック
-    if (!firstPlaylist || !firstPlaylist.url) {
+    if (!playlist || !playlist.url) {
       return c.json({ error: 'プレイリストが不正です' }, 404);
     }
+    
     // 302としてリダイレクト
-    return c.redirect(firstPlaylist.url);
+    return c.redirect(playlist.url);
   } catch (error) {
     console.error('APIエラー:', error);
     return c.json({ error: 'サーバーエラーが発生しました' }, 500);

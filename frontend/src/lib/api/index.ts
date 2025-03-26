@@ -55,7 +55,6 @@ export type InteriorType = {
 export type InteriorPattern = {
   id: number;
   name: string;
-  description: string | null;
 };
 
 // 内装の型定義
@@ -234,18 +233,18 @@ export const adminAPI = {
   },
   
   // 内装パターンを追加
-  addInteriorPattern: (name: string, description?: string) => {
+  addInteriorPattern: (typeId: number, name: string) => {
     return fetchAPI<{
       success: boolean;
       pattern: InteriorPattern;
     }>('/admin/interior-patterns', {
       method: 'POST',
-      body: { name, description },
+      body: { typeId, name },
     });
   },
   
   // 内装パターンを更新
-  updateInteriorPattern: (id: number, data: { name?: string; description?: string | null }) => {
+  updateInteriorPattern: (id: number, data: { name?: string }) => {
     return fetchAPI<{
       success: boolean;
       pattern: InteriorPattern;

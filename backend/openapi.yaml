@@ -455,10 +455,6 @@ paths:
                         name:
                           type: string
                           description: 内装パターン名
-                        description:
-                          type: string
-                          nullable: true
-                          description: 内装パターンの説明
         "500":
           description: サーバーエラー
           content:
@@ -810,13 +806,14 @@ paths:
               type: object
               required:
                 - name
+                - typeId
               properties:
+                typeId:
+                  type: integer
+                  description: 内装タイプID
                 name:
                   type: string
                   description: 内装パターン名
-                description:
-                  type: string
-                  description: 内装パターンの説明
       responses:
         "200":
           description: 内装パターンの追加に成功
@@ -878,10 +875,6 @@ paths:
                 name:
                   type: string
                   description: 内装パターン名
-                description:
-                  type: string
-                  nullable: true
-                  description: 内装パターンの説明
       responses:
         "200":
           description: 内装パターンの更新に成功
@@ -966,6 +959,42 @@ paths:
                     description: 使用中の数
         "404":
           description: 内装パターンが見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /{loginId}/playlist:
+    get:
+      summary: プレイリスト再生
+      description: ログインIDを指定し、指定された番号のプレイリスト項目にリダイレクトします
+      operationId: playPlaylist
+      parameters:
+        - name: loginId
+          in: path
+          required: true
+          description: ログインID
+          schema:
+            type: string
+        - name: index
+          in: query
+          required: false
+          description: プレイリストのインデックス（0から始まる、指定がない場合は0）
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "302":
+          description: プレイリストURLへのリダイレクト
+        "404":
+          description: 部屋が見つからない、またはプレイリストが不正
           content:
             application/json:
               schema:
