@@ -75,7 +75,7 @@ app.get('/api/rooms/:roomAliasId/claim', async (c) => {
 
     // 部屋が既に使用中かチェック
     if (room.isOccupied === 1) {
-      return c.json({ error: 'この部屋は既に使用されています' }, 400);
+      return c.json({ success: false, }, 400);
     }
     // 部屋を使用中に更新
     await db.update(schema.rooms)
@@ -87,7 +87,7 @@ app.get('/api/rooms/:roomAliasId/claim', async (c) => {
       .run();
 
     // 基本的な内装を追加
-    const interiorTypeCodes = ['sofa', 'table', 'bed', 'chair', 'lamp', 'carpet'];
+    const interiorTypeCodes = ['video', 'entrance', 'toy1', 'toy2', 'skybox'];
 
     // 内装タイプIDを取得
     for (const code of interiorTypeCodes) {
@@ -849,6 +849,35 @@ app.post('/api/rooms/playlists', async (c) => {
     }
 
     return c.json({ success: true });
+  } catch (error) {
+    console.error('APIエラー:', error);
+    return c.json({ error: 'サーバーエラーが発生しました' }, 500);
+  }
+});
+
+// プレイリスト再生API
+app.get('/api/:loginId/playlist', async (c) => {
+  const db = c.get('db');
+  try {
+    const loginId = c.req.param('loginId');
+
+    // ログインIDから部屋を検索
+    const room = await db.select().from(schema.rooms).where(eq(schema.rooms.loginId, loginId)).get();
+
+    if (!room) {
+      return c.json({ error: '部屋が見つかりません' }, 404);
+    }
+
+    // 部屋のプレイリスト情報を取得
+    const roomPlaylists = await db.select().from(schema.playlists).where(eq(schema.playlists.roomId, room.id)).all();
+    // プレイリストの最初の項目を取得
+    const firstPlaylist = roomPlaylists[0];
+    // URLの形式かチェック
+    if (!firstPlaylist || !firstPlaylist.url) {
+      return c.json({ error: 'プレイリストが不正です' }, 404);
+    }
+    // 302としてリダイレクト
+    return c.redirect(firstPlaylist.url);
   } catch (error) {
     console.error('APIエラー:', error);
     return c.json({ error: 'サーバーエラーが発生しました' }, 500);
