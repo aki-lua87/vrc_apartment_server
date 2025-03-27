@@ -970,16 +970,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  /{loginId}/playlist:
+  /{roomAliasId}/playlist:
     get:
       summary: プレイリスト再生
-      description: ログインIDを指定し、指定された番号のプレイリスト項目にリダイレクトします
+      description: 部屋エイリアスIDを指定し、指定された番号のプレイリスト項目にリダイレクトします
       operationId: playPlaylist
       parameters:
-        - name: loginId
+        - name: roomAliasId
           in: path
           required: true
-          description: ログインID
+          description: 部屋エイリアスID
           schema:
             type: string
         - name: index

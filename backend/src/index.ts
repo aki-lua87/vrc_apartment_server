@@ -89,36 +89,36 @@ app.get('/api/rooms/:roomAliasId/claim', async (c) => {
     // 基本的な内装を追加
     const interiorTypeCodes = ['video', 'entrance', 'toy1', 'toy2', 'skybox'];
 
-    // 内装タイプIDを取得
-    for (const code of interiorTypeCodes) {
-      // タイプIDを取得
-      const typeRecord = await db.select()
-        .from(schema.interiorTypes)
-        .where(eq(schema.interiorTypes.code, code))
-        .get();
+    // // 内装タイプIDを取得
+    // for (const code of interiorTypeCodes) {
+    //   // タイプIDを取得
+    //   const typeRecord = await db.select()
+    //     .from(schema.interiorTypes)
+    //     .where(eq(schema.interiorTypes.code, code))
+    //     .get();
 
-      if (!typeRecord) {
-        console.error(`内装タイプが見つかりません: ${code}`);
-        continue;
-      }
+    //   if (!typeRecord) {
+    //     console.error(`内装タイプが見つかりません: ${code}`);
+    //     continue;
+    //   }
 
-      // デフォルトパターンを取得（ID=1と仮定）
-      const patternRecord = await db.select()
-        .from(schema.interiorPatterns)
-        .where(eq(schema.interiorPatterns.id, 1))
-        .get();
+    //   // デフォルトパターンを取得（ID=1と仮定）
+    //   const patternRecord = await db.select()
+    //     .from(schema.interiorPatterns)
+    //     .where(eq(schema.interiorPatterns.id, 1))
+    //     .get();
 
-      if (!patternRecord) {
-        console.error('デフォルトの内装パターンが見つかりません');
-        continue;
-      }
+    //   if (!patternRecord) {
+    //     console.error('デフォルトの内装パターンが見つかりません');
+    //     continue;
+    //   }
 
-      // 内装を追加
-      await db.insert(schema.interiors).values({
-        patternId: patternRecord.id,
-        roomId: room.id,
-      }).run();
-    }
+    //   // 内装を追加
+    //   await db.insert(schema.interiors).values({
+    //     patternId: patternRecord.id,
+    //     roomId: room.id,
+    //   }).run();
+    // }
 
     return c.json({
       success: true,
@@ -509,17 +509,17 @@ app.get('/api/interior-combinations', async (c) => {
 
     // 組み合わせを作成
     const combinations = [];
-    
+
     for (const type of types) {
       // 各タイプに対応するパターンを取得
       const typePatterns = await db.select({
         id: schema.interiorPatterns.id,
         name: schema.interiorPatterns.name,
       })
-      .from(schema.interiorPatterns)
-      .where(eq(schema.interiorPatterns.typeId, type.id))
-      .all();
-      
+        .from(schema.interiorPatterns)
+        .where(eq(schema.interiorPatterns.typeId, type.id))
+        .all();
+
       combinations.push({
         type: {
           id: type.id,
@@ -868,16 +868,16 @@ app.post('/api/rooms/playlists', async (c) => {
 });
 
 // プレイリスト再生API
-app.get('/api/:loginId/playlist', async (c) => {
+app.get('/api/:roomAliasId/playlist', async (c) => {
   const db = c.get('db');
   try {
-    const loginId = c.req.param('loginId');
+    const roomAliasId = c.req.param('roomAliasId');
     // クエリパラメータからインデックスを取得（デフォルトは0）
     const indexParam = c.req.query('index');
     const index = indexParam ? parseInt(indexParam, 10) : 0;
 
-    // ログインIDから部屋を検索
-    const room = await db.select().from(schema.rooms).where(eq(schema.rooms.loginId, loginId)).get();
+    // 部屋エイリアスIDから部屋を検索
+    const room = await db.select().from(schema.rooms).where(eq(schema.rooms.roomAliasId, roomAliasId)).get();
 
     if (!room) {
       return c.json({ error: '部屋が見つかりません' }, 404);
@@ -885,19 +885,19 @@ app.get('/api/:loginId/playlist', async (c) => {
 
     // 部屋のプレイリスト情報を取得
     const roomPlaylists = await db.select().from(schema.playlists).where(eq(schema.playlists.roomId, room.id)).all();
-    
+
     // 指定されたインデックスのプレイリスト項目を取得
     if (index < 0 || index >= roomPlaylists.length) {
       return c.json({ error: '指定されたインデックスのプレイリストが存在しません' }, 404);
     }
-    
+
     const playlist = roomPlaylists[index];
-    
+
     // URLの形式かチェック
     if (!playlist || !playlist.url) {
       return c.json({ error: 'プレイリストが不正です' }, 404);
     }
-    
+
     // 302としてリダイレクト
     return c.redirect(playlist.url);
   } catch (error) {
