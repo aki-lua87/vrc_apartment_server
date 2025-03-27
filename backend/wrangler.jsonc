@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "backend",
+  "name": "vrc-apartment",
   "main": "src/index.ts",
   "compatibility_date": "2024-03-24",
   "d1_databases": [

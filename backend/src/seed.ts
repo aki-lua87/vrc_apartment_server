@@ -21,7 +21,7 @@ function generateSeedSQL(): string {
   let sql = '-- 部屋データのシードSQL\n\n';
 
   // 部屋データの作成（例として100部屋）
-  for (let i = 1; i <= 100; i++) {
+  for (let i = 1; i <= 10000; i++) {
     const roomNumber = generateRoomNumber(i);
     const roomName = generateDefaultRoomName(roomNumber);
     const roomAliasId = generateRandomId();

@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "vrc-apartment",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",

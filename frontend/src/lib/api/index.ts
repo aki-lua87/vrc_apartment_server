@@ -1,5 +1,6 @@
 // APIのベースURL
-const API_BASE_URL = '/api';
+// 環境変数からAPIURLを取得
+const API_BASE_URL = import.meta.env.VITE_APIURL || '/api';
 
 // APIリクエストのオプション型
 type RequestOptions = {
@@ -11,35 +12,35 @@ type RequestOptions = {
 // APIリクエストを送信する関数
 async function fetchAPI<T>(endpoint: string, options: RequestOptions): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
-  
+
   const config: RequestInit = {
     method: options.method,
     headers,
     credentials: 'include', // クッキーを含める
   };
-  
+
   if (options.body) {
     config.body = JSON.stringify(options.body);
   }
-  
+
   const response = await fetch(url, config);
-  
+
   // レスポンスが成功しなかった場合はエラーをスロー
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(errorData.error || `API request failed with status ${response.status}`);
   }
-  
+
   // 204 No Content の場合は null を返す
   if (response.status === 204) {
     return null as T;
   }
-  
+
   // JSONレスポンスをパース
   return await response.json();
 }
@@ -88,7 +89,7 @@ export const authAPI = {
       body: { loginId },
     });
   },
-  
+
   // 管理者ログイン
   adminLogin: (loginId: string) => {
     return fetchAPI<{
@@ -115,7 +116,7 @@ export const roomAPI = {
       method: 'GET',
     });
   },
-  
+
   // 部屋を自分のものにする
   claimRoom: (roomAliasId: string) => {
     return fetchAPI<{
@@ -126,21 +127,21 @@ export const roomAPI = {
       method: 'GET',
     });
   },
-  
+
   // 部屋の詳細を取得（部屋エイリアスIDを指定）
   getRoom: (roomAliasId: string) => {
     return fetchAPI<Room>(`/rooms/${roomAliasId}`, {
       method: 'GET',
     });
   },
-  
+
   // 部屋の詳細を取得（ログインIDを指定）
   getRoomByLoginId: (loginId: string) => {
     return fetchAPI<Room>(`/rooms/by-login/${loginId}`, {
       method: 'GET',
     });
   },
-  
+
   // 部屋名を更新
   updateRoomName: (loginId: string, roomName: string) => {
     return fetchAPI<{
@@ -151,7 +152,7 @@ export const roomAPI = {
       body: { loginId, roomName },
     });
   },
-  
+
   // 内装を更新
   updateInteriors: (loginId: string, interiors: Array<{ type: string; pattern: number }>) => {
     return fetchAPI<{ success: boolean }>('/rooms/interiors', {
@@ -159,7 +160,7 @@ export const roomAPI = {
       body: { loginId, interiors },
     });
   },
-  
+
   // プレイリストを更新
   updatePlaylists: (loginId: string, playlists: string[]) => {
     return fetchAPI<{ success: boolean }>('/rooms/playlists', {
@@ -177,14 +178,14 @@ export const interiorAPI = {
       method: 'GET',
     });
   },
-  
+
   // 内装パターンの一覧を取得
   getInteriorPatterns: () => {
     return fetchAPI<{ patterns: InteriorPattern[] }>('/interior-patterns', {
       method: 'GET',
     });
   },
-  
+
   // 内装タイプとパターンの組み合わせを取得
   getInteriorCombinations: () => {
     return fetchAPI<{
@@ -210,7 +211,7 @@ export const adminAPI = {
       body: { code, name },
     });
   },
-  
+
   // 内装タイプを更新
   updateInteriorType: (id: number, data: { code?: string; name?: string }) => {
     return fetchAPI<{
@@ -221,7 +222,7 @@ export const adminAPI = {
       body: data,
     });
   },
-  
+
   // 内装タイプを削除
   deleteInteriorType: (id: number) => {
     return fetchAPI<{
@@ -231,7 +232,7 @@ export const adminAPI = {
       method: 'DELETE',
     });
   },
-  
+
   // 内装パターンを追加
   addInteriorPattern: (typeId: number, name: string) => {
     return fetchAPI<{
@@ -242,7 +243,7 @@ export const adminAPI = {
       body: { typeId, name },
     });
   },
-  
+
   // 内装パターンを更新
   updateInteriorPattern: (id: number, data: { name?: string }) => {
     return fetchAPI<{
@@ -253,7 +254,7 @@ export const adminAPI = {
       body: data,
     });
   },
-  
+
   // 内装パターンを削除
   deleteInteriorPattern: (id: number) => {
     return fetchAPI<{

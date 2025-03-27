@@ -56,9 +56,14 @@ export const interiorPatterns = sqliteTable('interior_patterns', {
     ...schemaBase,
     // 内装タイプID
     typeId: integer('type_id').notNull().references(() => interiorTypes.id),
+    // パターン番号（内装タイプごとに1から始まる連番）
+    patternNumber: integer('pattern_number').notNull(),
     // パターン名（日本語表示用）
     name: text('name').notNull(),
-});
+}, (table) => [
+    // 内装タイプIDとパターン番号の組み合わせでユニーク制約
+    uniqueIndex('interior_type_pattern_number_idx').on(table.typeId, table.patternNumber),
+]);
 
 // 内装テーブル
 export const interiors = sqliteTable('interiors', {

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import * as schema from './schema';
 
 // Cloudflare Workersの環境変数の型定義
@@ -45,6 +45,14 @@ app.get('/api/rooms', async (c) => {
       roomName: schema.rooms.roomName,
       isOccupied: schema.rooms.isOccupied,
     }).from(schema.rooms).all();
+
+    const json = c.json({
+      rooms: rooms.map(room => ({
+        roomNumber: room.roomNumber,
+        roomName: room.roomName || null,
+        isOccupied: room.isOccupied === 1,
+      })),
+    });
 
     return c.json({
       rooms: rooms.map(room => ({
@@ -150,6 +158,7 @@ app.get('/api/rooms/:roomAliasId', async (c) => {
       interiorId: schema.interiors.id,
       typeId: schema.interiorPatterns.typeId,
       patternId: schema.interiors.patternId,
+      patternNumber: schema.interiorPatterns.patternNumber,
       typeCode: schema.interiorTypes.code,
       typeName: schema.interiorTypes.name,
       patternName: schema.interiorPatterns.name,
@@ -172,6 +181,7 @@ app.get('/api/rooms/:roomAliasId', async (c) => {
         type: interior.typeCode,
         typeName: interior.typeName,
         pattern: interior.patternId,
+        patternNumber: interior.patternNumber,
         patternName: interior.patternName,
       })),
       playlists: roomPlaylists.map((playlist: typeof schema.playlists.$inferSelect) => playlist.url),
@@ -203,6 +213,7 @@ app.get('/api/rooms/by-login/:loginId', async (c) => {
       interiorId: schema.interiors.id,
       typeId: schema.interiorPatterns.typeId,
       patternId: schema.interiors.patternId,
+      patternNumber: schema.interiorPatterns.patternNumber,
       typeCode: schema.interiorTypes.code,
       typeName: schema.interiorTypes.name,
       patternName: schema.interiorPatterns.name,
@@ -225,6 +236,7 @@ app.get('/api/rooms/by-login/:loginId', async (c) => {
         type: interior.typeCode,
         typeName: interior.typeName,
         pattern: interior.patternId,
+        patternNumber: interior.patternNumber,
         patternName: interior.patternName,
       })),
       playlists: roomPlaylists.map((playlist: typeof schema.playlists.$inferSelect) => playlist.url),
@@ -396,12 +408,16 @@ app.get('/api/interior-patterns', async (c) => {
     // 全ての内装パターンを取得
     const patterns = await db.select({
       id: schema.interiorPatterns.id,
+      typeId: schema.interiorPatterns.typeId,
+      patternNumber: schema.interiorPatterns.patternNumber,
       name: schema.interiorPatterns.name,
     }).from(schema.interiorPatterns).all();
 
     return c.json({
       patterns: patterns.map(pattern => ({
         id: pattern.id,
+        typeId: pattern.typeId,
+        patternNumber: pattern.patternNumber,
         name: pattern.name,
       })),
     });
@@ -511,13 +527,15 @@ app.get('/api/interior-combinations', async (c) => {
     const combinations = [];
 
     for (const type of types) {
-      // 各タイプに対応するパターンを取得
+      // 各タイプに対応するパターンを取得（パターン番号順にソート）
       const typePatterns = await db.select({
         id: schema.interiorPatterns.id,
+        patternNumber: schema.interiorPatterns.patternNumber,
         name: schema.interiorPatterns.name,
       })
         .from(schema.interiorPatterns)
         .where(eq(schema.interiorPatterns.typeId, type.id))
+        .orderBy(schema.interiorPatterns.patternNumber)
         .all();
 
       combinations.push({
@@ -528,6 +546,7 @@ app.get('/api/interior-combinations', async (c) => {
         },
         patterns: typePatterns.map(pattern => ({
           id: pattern.id,
+          patternNumber: pattern.patternNumber,
           name: pattern.name,
         })),
       });
@@ -696,14 +715,38 @@ app.post('/api/admin/interior-patterns', async (c) => {
     const body = await c.req.json();
     const { typeId, name } = body;
 
-    if (!name) {
-      return c.json({ error: '名前は必須です' }, 400);
+    if (!typeId || !name) {
+      return c.json({ error: '内装タイプIDと名前は必須です' }, 400);
     }
+
+    // 内装タイプの存在確認
+    const existingType = await db.select()
+      .from(schema.interiorTypes)
+      .where(eq(schema.interiorTypes.id, typeId))
+      .get();
+
+    if (!existingType) {
+      return c.json({ error: '指定された内装タイプが見つかりません' }, 404);
+    }
+
+    // 同じタイプの最大パターン番号を取得
+    const maxPatternNumberResult = await db.select({
+      maxNumber: sql<number>`MAX(${schema.interiorPatterns.patternNumber})`,
+    })
+      .from(schema.interiorPatterns)
+      .where(eq(schema.interiorPatterns.typeId, typeId))
+      .get();
+
+    // 新しいパターン番号を設定（既存の最大値 + 1、または初めての場合は1）
+    const maxNumber = maxPatternNumberResult?.maxNumber;
+    const newPatternNumber = maxNumber ? maxNumber + 1 : 1;
 
     // 内装パターンを追加
     const result = await db.insert(schema.interiorPatterns)
       .values({
-        typeId, name,
+        typeId,
+        patternNumber: newPatternNumber,
+        name,
       })
       .returning()
       .get();
@@ -712,6 +755,8 @@ app.post('/api/admin/interior-patterns', async (c) => {
       success: true,
       pattern: {
         id: result.id,
+        typeId: result.typeId,
+        patternNumber: result.patternNumber,
         name: result.name,
       },
     });
