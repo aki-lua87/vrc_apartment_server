@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import * as schema from './schema';
@@ -18,6 +19,16 @@ interface Variables {
 
 // Honoアプリケーションの作成
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+// CORSミドルウェアの設定
+app.use('*', cors({
+  origin: ['https://vrc-apartment-frontend.pages.dev'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length'],
+  maxAge: 86400,
+  credentials: true,
+}));
 
 // D1データベースの初期化とミドルウェア
 app.use('*', async (c, next) => {
