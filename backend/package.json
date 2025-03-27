@@ -1,8 +1,15 @@
 {
-  "name": "backend",
+  "name": "vrc-apartment",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify"
+    "deploy": "wrangler deploy --minify",
+    "generate": "drizzle-kit generate",
+    "migrate": "wrangler d1 migrations apply DB --local",
+    "seed": "ts-node src/seed.ts > seed/rooms.sql",
+    "seed:apply": "wrangler d1 execute DB --local --file=./seed/rooms.sql",
+    "admin:insert": "wrangler d1 execute DB --local --file=./seed/admin.sql",
+    "db:reset": "rm -R .wrangler/state/v3/d1/",
+    "db:init": "drizzle-kit generate && wrangler d1 migrations apply DB --local && wrangler d1 execute DB --local --file=./seed/admin.sql && wrangler d1 execute DB --local --file=./seed/rooms.sql"
   },
   "dependencies": {
     "drizzle-orm": "^0.41.0",
@@ -11,6 +18,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250214.0",
     "drizzle-kit": "^0.30.5",
-    "wrangler": "^3.109.2"
+    "ts-node": "^10.9.2",
+    "wrangler": "^4.4.0"
   }
 }
