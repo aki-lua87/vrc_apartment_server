@@ -99,6 +99,8 @@ export const interiorPatternsRelations = relations(interiorPatterns, ({ many }) 
 // プレイリストテーブル
 export const playlists = sqliteTable('playlists', {
     ...schemaBase,
+    // プレイリスト名
+    name: text('name', { length: 256 }),
     // プレイリストURL
     url: text('url').notNull(),
     // 部屋ID

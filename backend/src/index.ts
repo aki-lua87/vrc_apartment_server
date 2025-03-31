@@ -44,26 +44,39 @@ app.get('/', (c) => {
 });
 
 // 部屋一覧取得API
-// 全ての部屋の部屋番号と使用状況を返却
+// クエリパラメータのstartとendで指定された範囲のIDを持つ部屋の部屋番号と使用状況を返却
 app.get('/api/rooms', async (c) => {
   const db = c.get('db');
 
   try {
-    // 全ての部屋を取得
+    // クエリパラメータからstartとendを取得
+    const startParam = c.req.query('start');
+    const endParam = c.req.query('end');
+    
+    // 整数に変換（デフォルト値: startは1、endは最大値）
+    const start = startParam ? parseInt(startParam, 10) : 1;
+    const end = endParam ? parseInt(endParam, 10) : Number.MAX_SAFE_INTEGER;
+    
+    // 無効な値のチェック
+    if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
+      return c.json({ error: '無効なクエリパラメータです' }, 400);
+    }
+
+    // 指定された範囲のIDを持つ部屋を取得
     const rooms = await db.select({
       id: schema.rooms.id,
       roomNumber: schema.rooms.roomNumber,
       roomName: schema.rooms.roomName,
       isOccupied: schema.rooms.isOccupied,
-    }).from(schema.rooms).all();
-
-    const json = c.json({
-      rooms: rooms.map(room => ({
-        roomNumber: room.roomNumber,
-        roomName: room.roomName || null,
-        isOccupied: room.isOccupied === 1,
-      })),
-    });
+    })
+    .from(schema.rooms)
+    .where(
+      and(
+        sql`${schema.rooms.id} >= ${start}`,
+        sql`${schema.rooms.id} <= ${end}`
+      )
+    )
+    .all();
 
     return c.json({
       rooms: rooms.map(room => ({
@@ -195,7 +208,10 @@ app.get('/api/rooms/:roomAliasId', async (c) => {
         patternNumber: interior.patternNumber,
         patternName: interior.patternName,
       })),
-      playlists: roomPlaylists.map((playlist: typeof schema.playlists.$inferSelect) => playlist.url),
+      playlists: roomPlaylists.map((playlist: typeof schema.playlists.$inferSelect) => ({
+        name: playlist.name || null,
+        url: playlist.url,
+      })),
     };
 
     return c.json(response);
@@ -250,7 +266,10 @@ app.get('/api/rooms/by-login/:loginId', async (c) => {
         patternNumber: interior.patternNumber,
         patternName: interior.patternName,
       })),
-      playlists: roomPlaylists.map((playlist: typeof schema.playlists.$inferSelect) => playlist.url),
+      playlists: roomPlaylists.map((playlist: typeof schema.playlists.$inferSelect) => ({
+        name: playlist.name || null,
+        url: playlist.url,
+      })),
     };
 
     return c.json(response);
@@ -903,17 +922,30 @@ app.post('/api/rooms/playlists', async (c) => {
       .run();
 
     // 新しいプレイリストを追加
-    for (const url of playlists) {
-      if (typeof url !== 'string' || !url) {
-        continue;
+    for (const playlist of playlists) {
+      // 文字列の場合（後方互換性のため）
+      if (typeof playlist === 'string') {
+        if (!playlist) continue;
+        
+        await db.insert(schema.playlists)
+          .values({
+            url: playlist,
+            roomId: room.id,
+          })
+          .run();
+      } 
+      // オブジェクトの場合
+      else if (typeof playlist === 'object' && playlist !== null) {
+        if (!playlist.url) continue;
+        
+        await db.insert(schema.playlists)
+          .values({
+            name: playlist.name || null,
+            url: playlist.url,
+            roomId: room.id,
+          })
+          .run();
       }
-
-      await db.insert(schema.playlists)
-        .values({
-          url,
-          roomId: room.id,
-        })
-        .run();
     }
 
     return c.json({ success: true });
