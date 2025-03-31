@@ -131,7 +131,7 @@
 			await roomStore.updateInteriors(loginId, [
 				{ type: selectedInteriorType.code, pattern: patternId }
 			]);
-			
+
 			// 部屋情報を再取得して画面を更新
 			await roomStore.fetchRoomByLoginId(loginId);
 
@@ -325,16 +325,14 @@
 											コード: {type.code}
 										</p> -->
 										{#if $roomStore.currentRoom}
-											{#if $roomStore.currentRoom.interiors.some(interior => interior.type === type.code)}
-												{#each $roomStore.currentRoom.interiors.filter(interior => interior.type === type.code) as interior}
+											{#if $roomStore.currentRoom.interiors.some((interior) => interior.type === type.code)}
+												{#each $roomStore.currentRoom.interiors.filter((interior) => interior.type === type.code) as interior}
 													<p class="mt-2 text-sm font-medium text-blue-600">
 														現在の選択: {interior.patternName}
 													</p>
 												{/each}
 											{:else}
-												<p class="mt-2 text-sm text-gray-500">
-													未選択
-												</p>
+												<p class="mt-2 text-sm text-gray-500">未選択</p>
 											{/if}
 										{/if}
 									</div>
@@ -492,9 +490,9 @@
 	<div class="space-y-4">
 		<TextField
 			id="playlistName"
-			label="プレイリスト名（任意）"
+			label="動画名（任意）"
 			bind:value={newPlaylistName}
-			placeholder="プレイリストの名前"
+			placeholder="動画名"
 			fullWidth={true}
 		/>
 		<TextField
@@ -522,9 +520,9 @@
 	<div class="space-y-4">
 		<TextField
 			id="editPlaylistName"
-			label="プレイリスト名（任意）"
+			label="動画名（任意）"
 			bind:value={editPlaylistName}
-			placeholder="プレイリストの名前"
+			placeholder="動画名"
 			fullWidth={true}
 		/>
 		<TextField
