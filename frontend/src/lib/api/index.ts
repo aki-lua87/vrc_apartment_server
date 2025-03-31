@@ -66,13 +66,19 @@ export type Interior = {
   patternName: string;
 };
 
+// プレイリストの型定義
+export type Playlist = {
+  name: string | null;
+  url: string;
+};
+
 // 部屋の型定義
 export type Room = {
   roomNumber: string;
   roomName: string | null;
   isOccupied: boolean;
   interiors: Interior[];
-  playlists: string[];
+  playlists: Playlist[];
 };
 
 // ログイン関連のAPI
@@ -162,7 +168,7 @@ export const roomAPI = {
   },
 
   // プレイリストを更新
-  updatePlaylists: (loginId: string, playlists: string[]) => {
+  updatePlaylists: (loginId: string, playlists: Array<string | { name?: string | null; url: string }>) => {
     return fetchAPI<{ success: boolean }>('/rooms/playlists', {
       method: 'POST',
       body: { loginId, playlists },
