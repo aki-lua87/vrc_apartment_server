@@ -145,19 +145,23 @@
 	let isPlaylistModalOpen = false;
 	let isPlaylistEditModalOpen = false;
 	let newPlaylistUrl = '';
+	let newPlaylistName = '';
 	let editPlaylistUrl = '';
+	let editPlaylistName = '';
 	let editPlaylistIndex = -1;
 	let playlistError = '';
 	let editPlaylistError = '';
 
 	function openPlaylistModal() {
 		newPlaylistUrl = '';
+		newPlaylistName = '';
 		playlistError = '';
 		isPlaylistModalOpen = true;
 	}
 
-	function openPlaylistEditModal(url: string, index: number) {
-		editPlaylistUrl = url;
+	function openPlaylistEditModal(playlist: { name: string | null; url: string }, index: number) {
+		editPlaylistUrl = playlist.url;
+		editPlaylistName = playlist.name || '';
 		editPlaylistIndex = index;
 		editPlaylistError = '';
 		isPlaylistEditModalOpen = true;
@@ -195,7 +199,10 @@
 
 		if ($roomStore.currentRoom && editPlaylistIndex >= 0) {
 			const updatedPlaylists = [...$roomStore.currentRoom.playlists];
-			updatedPlaylists[editPlaylistIndex] = editPlaylistUrl;
+			updatedPlaylists[editPlaylistIndex] = {
+				name: editPlaylistName || null,
+				url: editPlaylistUrl
+			};
 
 			try {
 				// ログインIDを取得
@@ -234,7 +241,11 @@
 				return;
 			}
 
-			const updatedPlaylists = [...$roomStore.currentRoom.playlists, newPlaylistUrl];
+			const newPlaylist = {
+				name: newPlaylistName || null,
+				url: newPlaylistUrl
+			};
+			const updatedPlaylists = [...$roomStore.currentRoom.playlists, newPlaylist];
 
 			try {
 				// ログインIDを取得
@@ -246,7 +257,9 @@
 
 				await roomStore.updatePlaylists(loginId, updatedPlaylists);
 				newPlaylistUrl = '';
+				newPlaylistName = '';
 				playlistError = '';
+				isPlaylistModalOpen = false;
 			} catch (error) {
 				playlistError = error instanceof Error ? error.message : '不明なエラーが発生しました';
 			}
@@ -308,9 +321,9 @@
 												変更
 											</Button>
 										</div>
-										<p class="mt-2 text-sm text-gray-600">
+										<!-- <p class="mt-2 text-sm text-gray-600">
 											コード: {type.code}
-										</p>
+										</p> -->
 										{#if $roomStore.currentRoom}
 											{#if $roomStore.currentRoom.interiors.some(interior => interior.type === type.code)}
 												{#each $roomStore.currentRoom.interiors.filter(interior => interior.type === type.code) as interior}
@@ -362,25 +375,28 @@
 										</tr>
 									</thead>
 									<tbody class="divide-y divide-gray-200 bg-white">
-										{#each $roomStore.currentRoom.playlists as url, index}
+										{#each $roomStore.currentRoom.playlists as playlist, index}
 											<tr>
 												<td
 													class="max-w-xs truncate whitespace-nowrap px-6 py-4 text-sm text-gray-500"
 												>
+													{#if playlist.name}
+														<div class="mb-1 text-sm font-medium">{playlist.name}</div>
+													{/if}
 													<a
-														href={url}
+														href={playlist.url}
 														target="_blank"
 														rel="noopener noreferrer"
-														class="text-primary-600 hover:underline"
+														class="text-blue-600 hover:underline"
 													>
-														{url}
+														{playlist.url}
 													</a>
 												</td>
 												<td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
 													<div class="flex justify-end space-x-2">
 														<button
 															class="text-blue-600 hover:text-blue-900"
-															on:click={() => openPlaylistEditModal(url, index)}
+															on:click={() => openPlaylistEditModal(playlist, index)}
 														>
 															編集
 														</button>
@@ -475,6 +491,13 @@
 >
 	<div class="space-y-4">
 		<TextField
+			id="playlistName"
+			label="プレイリスト名（任意）"
+			bind:value={newPlaylistName}
+			placeholder="プレイリストの名前"
+			fullWidth={true}
+		/>
+		<TextField
 			id="playlistUrl"
 			label="URL"
 			bind:value={newPlaylistUrl}
@@ -493,10 +516,17 @@
 <!-- プレイリスト編集モーダル -->
 <Modal
 	open={isPlaylistEditModalOpen}
-	title="プレイリストURLを編集"
+	title="プレイリストを編集"
 	on:close={() => (isPlaylistEditModalOpen = false)}
 >
 	<div class="space-y-4">
+		<TextField
+			id="editPlaylistName"
+			label="プレイリスト名（任意）"
+			bind:value={editPlaylistName}
+			placeholder="プレイリストの名前"
+			fullWidth={true}
+		/>
 		<TextField
 			id="editPlaylistUrl"
 			label="URL"

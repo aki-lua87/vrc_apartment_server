@@ -144,8 +144,15 @@ paths:
                     type: array
                     description: プレイリスト情報
                     items:
-                      type: string
-                      description: プレイリストURL
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          nullable: true
+                          description: プレイリスト名（設定されていない場合はnull）
+                        url:
+                          type: string
+                          description: プレイリストURL
         "404":
           description: 部屋が見つからない
           content:
@@ -211,8 +218,15 @@ paths:
                     type: array
                     description: プレイリスト情報
                     items:
-                      type: string
-                      description: プレイリストURL
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          nullable: true
+                          description: プレイリスト名（設定されていない場合はnull）
+                        url:
+                          type: string
+                          description: プレイリストURL
         "404":
           description: 部屋が見つからない
           content:
@@ -365,8 +379,17 @@ paths:
                   type: array
                   description: プレイリスト情報
                   items:
-                    type: string
-                    description: プレイリストURL
+                    type: object
+                    required:
+                      - url
+                    properties:
+                      name:
+                        type: string
+                        nullable: true
+                        description: プレイリスト名（設定されていない場合はnull）
+                      url:
+                        type: string
+                        description: プレイリストURL
       responses:
         "200":
           description: プレイリストの更新に成功
