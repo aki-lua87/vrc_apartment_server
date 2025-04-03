@@ -22,7 +22,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // CORSミドルウェアの設定
 app.use('*', cors({
-  origin: ['https://vrc-apartment-frontend.pages.dev'],
+  origin: ['https://vrc-apartment-frontend.pages.dev', 'https://vrc.apartment.akakitune87.net'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowHeaders: ['Content-Type', 'Authorization'],
   exposeHeaders: ['Content-Length'],
@@ -52,11 +52,11 @@ app.get('/api/rooms', async (c) => {
     // クエリパラメータからstartとendを取得
     const startParam = c.req.query('start');
     const endParam = c.req.query('end');
-    
+
     // 整数に変換（デフォルト値: startは1、endは最大値）
     const start = startParam ? parseInt(startParam, 10) : 1;
     const end = endParam ? parseInt(endParam, 10) : Number.MAX_SAFE_INTEGER;
-    
+
     // 無効な値のチェック
     if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
       return c.json({ error: '無効なクエリパラメータです' }, 400);
@@ -69,14 +69,14 @@ app.get('/api/rooms', async (c) => {
       roomName: schema.rooms.roomName,
       isOccupied: schema.rooms.isOccupied,
     })
-    .from(schema.rooms)
-    .where(
-      and(
-        sql`${schema.rooms.id} >= ${start}`,
-        sql`${schema.rooms.id} <= ${end}`
+      .from(schema.rooms)
+      .where(
+        and(
+          sql`${schema.rooms.id} >= ${start}`,
+          sql`${schema.rooms.id} <= ${end}`
+        )
       )
-    )
-    .all();
+      .all();
 
     return c.json({
       rooms: rooms.map(room => ({
@@ -926,18 +926,18 @@ app.post('/api/rooms/playlists', async (c) => {
       // 文字列の場合（後方互換性のため）
       if (typeof playlist === 'string') {
         if (!playlist) continue;
-        
+
         await db.insert(schema.playlists)
           .values({
             url: playlist,
             roomId: room.id,
           })
           .run();
-      } 
+      }
       // オブジェクトの場合
       else if (typeof playlist === 'object' && playlist !== null) {
         if (!playlist.url) continue;
-        
+
         await db.insert(schema.playlists)
           .values({
             name: playlist.name || null,
