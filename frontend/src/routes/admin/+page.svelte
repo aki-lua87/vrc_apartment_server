@@ -6,6 +6,7 @@
   import { authStore } from '../../lib/stores/auth';
   
   let loginId = '';
+  let password = ''; // ダミーのパスワード変数（バックエンドに送信されません）
   let error = '';
   let isLoading = false;
   
@@ -60,6 +61,17 @@
             error={error}
             fullWidth={true}
             placeholder="管理者ログインIDを入力"
+          />
+        </div>
+
+        <div>
+          <TextField
+            id="password"
+            label="パスワード"
+            type="password"
+            bind:value={password}
+            fullWidth={true}
+            placeholder="パスワードを入力"
           />
         </div>
 
