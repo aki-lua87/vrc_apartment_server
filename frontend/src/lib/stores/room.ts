@@ -157,8 +157,8 @@ function createRoomStore() {
       update(state => ({ ...state, isLoading: true, error: null }));
 
       try {
-        // プレイリストは最大3件まで
-        const limitedPlaylists = playlists.slice(0, 3);
+        // プレイリストは最大10件まで
+        const limitedPlaylists = playlists.slice(0, 10);
 
         const result = await roomAPI.updatePlaylists(loginId, limitedPlaylists);
 
