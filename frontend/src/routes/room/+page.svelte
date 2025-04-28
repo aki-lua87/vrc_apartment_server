@@ -235,9 +235,9 @@
 		}
 
 		if ($roomStore.currentRoom) {
-			// プレイリストは最大3件まで
-			if ($roomStore.currentRoom.playlists.length >= 3) {
-				playlistError = 'プレイリストは最大3件までです';
+			// プレイリストは最大10件まで
+			if ($roomStore.currentRoom.playlists.length >= 10) {
+				playlistError = 'プレイリストは最大10件までです';
 				return;
 			}
 
@@ -349,7 +349,7 @@
 								variant="primary"
 								size="sm"
 								on:click={openPlaylistModal}
-								disabled={$roomStore.currentRoom.playlists.length >= 3}
+								disabled={$roomStore.currentRoom.playlists.length >= 10}
 							>
 								追加
 							</Button>
